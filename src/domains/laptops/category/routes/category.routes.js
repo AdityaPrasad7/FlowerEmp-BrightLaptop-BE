@@ -11,6 +11,7 @@ import {
   deleteCategory,
   getCategoryTypes,
 } from '../controllers/category.controller.js';
+import { getProductsByCategory } from '../../product/controllers/product.controller.js';
 import { protect } from '../../../../shared/common/middlewares/auth.middleware.js';
 import { restrictTo } from '../../../../shared/common/middlewares/role.middleware.js';
 import { validate, validateParams } from '../../../../shared/common/middlewares/validate.middleware.js';
@@ -24,6 +25,7 @@ const router = express.Router();
 
 // Public routes
 router.get('/types/list', getCategoryTypes);
+router.get('/:categoryName/products', getProductsByCategory); // Must be before /:id route
 router.get('/', getCategories);
 router.get('/slug/:slug', getCategoryBySlug);
 router.get('/:id', validateParams(mongoIdParamSchema), getCategory);

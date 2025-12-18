@@ -14,6 +14,7 @@ import flowersAuthRoutes from './domains/flowers/auth/routes/auth.routes.js';
 import flowersProductRoutes from './domains/flowers/product/routes/product.routes.js';
 import flowersOrderRoutes from './domains/flowers/order/routes/order.routes.js';
 import flowersCartRoutes from './domains/flowers/cart/routes/cart.routes.js';
+import flowersCategoryRoutes from './domains/flowers/category/routes/category.routes.js';
 
 // Import laptops domain routes (including auth)
 import laptopsAuthRoutes from './domains/laptops/auth/routes/auth.routes.js';
@@ -21,8 +22,6 @@ import laptopsProductRoutes from './domains/laptops/product/routes/product.route
 import laptopsOrderRoutes from './domains/laptops/order/routes/order.routes.js';
 import laptopsCartRoutes from './domains/laptops/cart/routes/cart.routes.js';
 import laptopsCategoryRoutes from './domains/laptops/category/routes/category.routes.js';
-import laptopsNavigationRoutes from './domains/laptops/category/routes/navigation.routes.js';
-import laptopsBuyerRoutes from './domains/laptops/buyer/routes/buyer.routes.js';
 
 const app = express();
 
@@ -61,6 +60,7 @@ app.use('/api/flowers/auth', flowersAuthRoutes);
 app.use('/api/flowers/products', flowersProductRoutes);
 app.use('/api/flowers/orders', flowersOrderRoutes);
 app.use('/api/flowers/cart', flowersCartRoutes);
+app.use('/api/flowers/categories', flowersCategoryRoutes);
 
 // Laptops domain routes
 app.use('/api/laptops/auth', laptopsAuthRoutes);
@@ -68,8 +68,6 @@ app.use('/api/laptops/products', laptopsProductRoutes);
 app.use('/api/laptops/orders', laptopsOrderRoutes);
 app.use('/api/laptops/cart', laptopsCartRoutes);
 app.use('/api/laptops/categories', laptopsCategoryRoutes);
-app.use('/api/laptops/navigation-categories', laptopsNavigationRoutes);
-app.use('/api/laptops/buyer', laptopsBuyerRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

@@ -3,11 +3,7 @@
  * Zod schemas for product endpoints
  */
 import { z } from 'zod';
-import {
-  positiveNumberSchema,
-  positiveIntegerSchema,
-  mongoIdSchema,
-} from '../../../../shared/common/validators/common.validator.js';
+import { positiveNumberSchema, positiveIntegerSchema } from '../../../../shared/common/validators/common.validator.js';
 
 /**
  * Bulk pricing tier schema
@@ -77,23 +73,11 @@ export const createProductSchema = z.object({
   ]).optional().default(1),
   bulkPricing: bulkPricingSchema,
   stock: positiveIntegerSchema,
-  conditionCategory: mongoIdSchema.optional(),
-  useCaseCategories: z.array(mongoIdSchema).optional().default([]),
-  brandCategory: mongoIdSchema.optional(),
-  images: z.array(z.string().url('Each image must be a valid URL')).optional().default([]),
-  rating: z
-    .union([
-      z.number().min(0, 'Rating must be at least 0').max(5, 'Rating must be at most 5'),
-      z.string().transform((val) => {
-        const num = parseFloat(val);
-        if (isNaN(num) || num < 0 || num > 5) {
-          throw new Error('Rating must be between 0 and 5');
-        }
-        return num;
-      }),
-    ])
-    .optional()
-    .default(0),
+  category: z
+    .string()
+    .trim()
+    .min(2, 'Category must be at least 2 characters')
+    .max(50, 'Category must not exceed 50 characters'),
 });
 
 /**
@@ -126,21 +110,11 @@ export const updateProductSchema = z.object({
   bulkPricing: bulkPricingSchema,
   stock: positiveIntegerSchema.optional(),
   isActive: z.boolean().optional(),
-  conditionCategory: mongoIdSchema.optional().nullable(),
-  useCaseCategories: z.array(mongoIdSchema).optional(),
-  brandCategory: mongoIdSchema.optional().nullable(),
-  images: z.array(z.string().url('Each image must be a valid URL')).optional(),
-  rating: z
-    .union([
-      z.number().min(0, 'Rating must be at least 0').max(5, 'Rating must be at most 5'),
-      z.string().transform((val) => {
-        const num = parseFloat(val);
-        if (isNaN(num) || num < 0 || num > 5) {
-          throw new Error('Rating must be between 0 and 5');
-        }
-        return num;
-      }),
-    ])
+  category: z
+    .string()
+    .trim()
+    .min(2, 'Category must be at least 2 characters')
+    .max(50, 'Category must not exceed 50 characters')
     .optional(),
 });
 

@@ -3,7 +3,16 @@
  * Handles product CRUD operations
  */
 import Product from '../models/Product.model.js';
+import UserModel from '../../auth/models/User.model.js';
 import { AppError, asyncHandler } from '../../../../shared/common/utils/errorHandler.js';
+
+// Ensure User model is initialized on flowers connection before using Product.populate()
+// Access UserModel to trigger Proxy getter which registers User on flowers connection
+try {
+  void UserModel.modelName;
+} catch (e) {
+  // User model will be registered when needed
+}
 
 /**
  * @route   POST /api/flowers/products
@@ -11,12 +20,15 @@ import { AppError, asyncHandler } from '../../../../shared/common/utils/errorHan
  * @access  Private (Seller/Admin only)
  */
 export const createProduct = asyncHandler(async (req, res, next) => {
-  const { name, description, basePrice, stock } = req.body;
+  const { name, description, basePrice, stock, category } = req.body;
 
   // Validate required fields
-  if (!name || basePrice === undefined || stock === undefined) {
-    return next(new AppError('Please provide name, basePrice, and stock', 400));
+  if (!name || basePrice === undefined || stock === undefined || !category) {
+    return next(new AppError('Please provide name, basePrice, stock, and category', 400));
   }
+
+  // Normalize category: trim and lowercase
+  const normalizedCategory = category.trim().toLowerCase();
 
   // Create product
   const product = await Product.create({
@@ -24,6 +36,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     description: description || '',
     basePrice,
     stock,
+    category: normalizedCategory,
     sellerId: req.user._id,
   });
 
@@ -41,7 +54,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
  * @access  Public
  */
 export const getProducts = asyncHandler(async (req, res, next) => {
-  const { sellerId, isActive } = req.query;
+  const { sellerId, isActive, category } = req.query;
 
   // Build query
   const query = {};
@@ -54,6 +67,10 @@ export const getProducts = asyncHandler(async (req, res, next) => {
   } else {
     // By default, only show active products (exclude deleted ones)
     query.isActive = true;
+  }
+  // Filter by category (case-insensitive)
+  if (category) {
+    query.category = category.trim().toLowerCase();
   }
 
   const products = await Product.find(query)
@@ -101,7 +118,7 @@ export const getProduct = asyncHandler(async (req, res, next) => {
  * @access  Private (Seller/Admin only)
  */
 export const updateProduct = asyncHandler(async (req, res, next) => {
-  const { name, description, basePrice, stock, isActive } = req.body;
+  const { name, description, basePrice, stock, isActive, category } = req.body;
 
   const product = await Product.findById(req.params.id);
 
@@ -125,6 +142,10 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   if (basePrice !== undefined) product.basePrice = basePrice;
   if (stock !== undefined) product.stock = stock;
   if (isActive !== undefined) product.isActive = isActive;
+  // Normalize category if provided
+  if (category !== undefined) {
+    product.category = category.trim().toLowerCase();
+  }
 
   await product.save();
 
@@ -186,6 +207,67 @@ export const deleteProduct = asyncHandler(async (req, res, next) => {
         name: product.name,
         isActive: false,
       },
+    },
+  });
+});
+
+/**
+ * @route   GET /api/flowers/products/categories/list
+ * @desc    Get all unique categories from products
+ * @access  Public
+ */
+export const getAllCategories = asyncHandler(async (req, res, next) => {
+  // Get distinct categories from active products only
+  const categories = await Product.distinct('category', { isActive: true });
+
+  // Sort categories alphabetically
+  const sortedCategories = categories.sort();
+
+  res.status(200).json({
+    success: true,
+    count: sortedCategories.length,
+    data: {
+      categories: sortedCategories,
+    },
+  });
+});
+
+/**
+ * @route   GET /api/flowers/categories/:categoryName/products
+ * @desc    Get all products from a specific category
+ * @access  Public
+ */
+export const getProductsByCategory = asyncHandler(async (req, res, next) => {
+  const { categoryName } = req.params;
+  const { sellerId, isActive } = req.query;
+
+  // Normalize category name (trim and lowercase)
+  const normalizedCategory = categoryName.trim().toLowerCase();
+
+  // Build query
+  const query = {
+    category: normalizedCategory,
+  };
+
+  if (sellerId) {
+    query.sellerId = sellerId;
+  }
+  if (isActive !== undefined) {
+    query.isActive = isActive === 'true';
+  } else {
+    query.isActive = true; // Default to active products only
+  }
+
+  const products = await Product.find(query)
+    .populate('sellerId', 'name email companyName')
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    count: products.length,
+    data: {
+      category: normalizedCategory,
+      products,
     },
   });
 });

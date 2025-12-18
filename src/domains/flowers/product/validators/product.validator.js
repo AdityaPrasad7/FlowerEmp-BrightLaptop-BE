@@ -22,6 +22,11 @@ export const createProductSchema = z.object({
     .default(''),
   basePrice: positiveNumberSchema,
   stock: positiveIntegerSchema,
+  category: z
+    .string()
+    .trim()
+    .min(2, 'Category must be at least 2 characters')
+    .max(50, 'Category must not exceed 50 characters'),
 });
 
 /**
@@ -42,6 +47,12 @@ export const updateProductSchema = z.object({
   basePrice: positiveNumberSchema.optional(),
   stock: positiveIntegerSchema.optional(),
   isActive: z.boolean().optional(),
+  category: z
+    .string()
+    .trim()
+    .min(2, 'Category must be at least 2 characters')
+    .max(50, 'Category must not exceed 50 characters')
+    .optional(),
 });
 
 

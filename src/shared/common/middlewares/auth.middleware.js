@@ -1,15 +1,35 @@
 /**
  * Authentication Middleware
  * Verifies JWT tokens and attaches user to request
- * Uses flowers domain User model (domain-specific auth)
+ * Domain-aware: Uses the correct User model based on request path
  */
 import jwt from 'jsonwebtoken';
 import env from '../../infrastructure/config/env.js';
-import User from '../../../domains/flowers/auth/models/User.model.js';
+import FlowersUser from '../../../domains/flowers/auth/models/User.model.js';
+import LaptopsUser from '../../../domains/laptops/auth/models/User.model.js';
 import { AppError, asyncHandler } from '../utils/errorHandler.js';
 
 /**
+ * Determine which domain's User model to use based on request path
+ */
+const getUserModel = (req) => {
+  const path = req.originalUrl || req.path || '';
+  
+  if (path.includes('/api/flowers/')) {
+    return FlowersUser;
+  } else if (path.includes('/api/laptops/')) {
+    return LaptopsUser;
+  }
+  
+  // Default to flowers domain if path doesn't match (for backward compatibility)
+  // This should rarely happen since all routes are domain-specific
+  console.warn(`Warning: Could not determine domain from path: ${path}. Defaulting to flowers domain.`);
+  return FlowersUser;
+};
+
+/**
  * Protect routes - requires valid JWT token
+ * Automatically uses the correct domain's User model based on request path
  */
 export const protect = asyncHandler(async (req, res, next) => {
   let token;
@@ -38,15 +58,20 @@ export const protect = asyncHandler(async (req, res, next) => {
     // Debug: Log decoded token info
     console.log('Token decoded - userId:', decoded.id);
 
-    // Get user from token
+    // Get the appropriate User model based on the request path
+    const User = getUserModel(req);
+    const domain = req.originalUrl?.includes('/api/laptops/') ? 'laptops' : 'flowers';
+    console.log(`Using ${domain} domain User model for authentication`);
+
+    // Get user from token using the correct domain's User model
     const user = await User.findById(decoded.id).select('-password');
 
     if (!user) {
-      return next(new AppError('User not found', 404));
+      return next(new AppError(`User not found in ${domain} domain`, 404));
     }
 
     // Debug: Log user info
-    console.log('User authenticated - userId:', user._id.toString(), 'email:', user.email);
+    console.log(`User authenticated - userId: ${user._id.toString()}, email: ${user.email}, domain: ${domain}`);
 
     // Attach user to request object
     req.user = user;
