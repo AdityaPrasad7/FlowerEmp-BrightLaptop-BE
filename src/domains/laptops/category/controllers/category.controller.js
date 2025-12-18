@@ -1,0 +1,262 @@
+/**
+ * Category Controller (Laptops Domain)
+ * Handles category CRUD operations
+ */
+import Category from '../models/Category.model.js';
+import { AppError, asyncHandler } from '../../../../shared/common/utils/errorHandler.js';
+
+/**
+ * @route   POST /api/laptops/categories
+ * @desc    Create a new category
+ * @access  Private (Admin/Seller only)
+ */
+export const createCategory = asyncHandler(async (req, res, next) => {
+  const { name, type, description } = req.body;
+
+  // Check if category with same name already exists
+  const existingCategory = await Category.findOne({
+    $or: [
+      { name: { $regex: new RegExp(`^${name}$`, 'i') } },
+      { slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') }
+    ]
+  });
+
+  if (existingCategory) {
+    return next(new AppError('Category with this name already exists', 400));
+  }
+
+  // Create category
+  const category = await Category.create({
+    name,
+    type,
+    description: description || '',
+    createdBy: req.user._id,
+  });
+
+  res.status(201).json({
+    success: true,
+    data: {
+      category,
+    },
+  });
+});
+
+/**
+ * @route   GET /api/laptops/categories
+ * @desc    Get all categories (with optional filtering)
+ * @access  Public
+ */
+export const getCategories = asyncHandler(async (req, res, next) => {
+  const { type, isActive } = req.query;
+
+  // Build query
+  const query = {};
+  if (type) {
+    query.type = type;
+  }
+  if (isActive !== undefined) {
+    query.isActive = isActive === 'true';
+  } else {
+    query.isActive = true; // Default to active categories only
+  }
+
+  const categories = await Category.find(query)
+    .populate('createdBy', 'name email')
+    .sort({ type: 1, name: 1 });
+
+  res.status(200).json({
+    success: true,
+    count: categories.length,
+    data: {
+      categories,
+    },
+  });
+});
+
+/**
+ * @route   GET /api/laptops/categories/:id
+ * @desc    Get single category
+ * @access  Public
+ */
+export const getCategory = asyncHandler(async (req, res, next) => {
+  const category = await Category.findById(req.params.id).populate(
+    'createdBy',
+    'name email'
+  );
+
+  if (!category) {
+    return next(new AppError('Category not found', 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      category,
+    },
+  });
+});
+
+/**
+ * @route   GET /api/laptops/categories/slug/:slug
+ * @desc    Get category by slug
+ * @access  Public
+ */
+export const getCategoryBySlug = asyncHandler(async (req, res, next) => {
+  const category = await Category.findOne({ slug: req.params.slug }).populate(
+    'createdBy',
+    'name email'
+  );
+
+  if (!category) {
+    return next(new AppError('Category not found', 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      category,
+    },
+  });
+});
+
+/**
+ * @route   PUT /api/laptops/categories/:id
+ * @desc    Update category
+ * @access  Private (Admin/Seller only)
+ */
+export const updateCategory = asyncHandler(async (req, res, next) => {
+  const { name, type, description, isActive } = req.body;
+
+  const category = await Category.findById(req.params.id);
+
+  if (!category) {
+    return next(new AppError('Category not found', 404));
+  }
+
+  // Check if user is admin or the creator
+  if (req.user.role !== 'ADMIN' && category.createdBy.toString() !== req.user._id.toString()) {
+    return next(
+      new AppError('Not authorized to update this category', 403)
+    );
+  }
+
+  // Check if name change would conflict with existing category
+  if (name && name !== category.name) {
+    const existingCategory = await Category.findOne({
+      _id: { $ne: req.params.id },
+      $or: [
+        { name: { $regex: new RegExp(`^${name}$`, 'i') } },
+        { slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') }
+      ]
+    });
+
+    if (existingCategory) {
+      return next(new AppError('Category with this name already exists', 400));
+    }
+  }
+
+  // Update fields
+  if (name !== undefined) category.name = name;
+  if (type !== undefined) category.type = type;
+  if (description !== undefined) category.description = description;
+  if (isActive !== undefined) category.isActive = isActive;
+
+  // Regenerate slug if name changed
+  if (name && name !== category.name) {
+    category.slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  }
+
+  await category.save();
+
+  res.status(200).json({
+    success: true,
+    data: {
+      category,
+    },
+  });
+});
+
+/**
+ * @route   DELETE /api/laptops/categories/:id
+ * @desc    Delete category (soft delete by setting isActive to false)
+ * @access  Private (Admin/Seller only)
+ */
+export const deleteCategory = asyncHandler(async (req, res, next) => {
+  const category = await Category.findById(req.params.id);
+
+  if (!category) {
+    return next(new AppError('Category not found', 404));
+  }
+
+  // Check if user is admin or the creator
+  if (req.user.role !== 'ADMIN' && category.createdBy.toString() !== req.user._id.toString()) {
+    return next(
+      new AppError('Not authorized to delete this category', 403)
+    );
+  }
+
+  // Check if already deleted
+  if (!category.isActive) {
+    return res.status(200).json({
+      success: true,
+      message: 'Category is already deleted',
+      data: {
+        category: {
+          _id: category._id,
+          name: category.name,
+          isActive: false,
+        },
+      },
+    });
+  }
+
+  // Soft delete - set isActive to false
+  category.isActive = false;
+  await category.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Category deleted successfully',
+    data: {
+      category: {
+        _id: category._id,
+        name: category.name,
+        isActive: false,
+      },
+    },
+  });
+});
+
+/**
+ * @route   GET /api/laptops/categories/types/list
+ * @desc    Get all category types
+ * @access  Public
+ */
+export const getCategoryTypes = asyncHandler(async (req, res, next) => {
+  res.status(200).json({
+    success: true,
+    data: {
+      types: [
+        {
+          value: 'CONDITION',
+          label: 'Condition',
+          description: 'Product condition (e.g., New, Pre-owned)',
+        },
+        {
+          value: 'USE_CASE',
+          label: 'Use Case',
+          description: 'Ideal for use cases (e.g., Business, Gaming, Coders)',
+        },
+        {
+          value: 'BRAND',
+          label: 'Brand',
+          description: 'Product brand (e.g., Dell, Apple, HP)',
+        },
+      ],
+    },
+  });
+});
+

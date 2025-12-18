@@ -1,0 +1,85 @@
+/**
+ * Express Application Setup
+ * Main application configuration and middleware setup
+ */
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import env from './shared/infrastructure/config/env.js';
+import { errorHandler } from './shared/common/utils/errorHandler.js';
+import { apiLimiter } from './shared/common/middlewares/rateLimiter.middleware.js';
+
+// Import flowers domain routes (including auth)
+import flowersAuthRoutes from './domains/flowers/auth/routes/auth.routes.js';
+import flowersProductRoutes from './domains/flowers/product/routes/product.routes.js';
+import flowersOrderRoutes from './domains/flowers/order/routes/order.routes.js';
+import flowersCartRoutes from './domains/flowers/cart/routes/cart.routes.js';
+
+// Import laptops domain routes (including auth)
+import laptopsAuthRoutes from './domains/laptops/auth/routes/auth.routes.js';
+import laptopsProductRoutes from './domains/laptops/product/routes/product.routes.js';
+import laptopsOrderRoutes from './domains/laptops/order/routes/order.routes.js';
+import laptopsCartRoutes from './domains/laptops/cart/routes/cart.routes.js';
+import laptopsCategoryRoutes from './domains/laptops/category/routes/category.routes.js';
+import laptopsNavigationRoutes from './domains/laptops/category/routes/navigation.routes.js';
+import laptopsBuyerRoutes from './domains/laptops/buyer/routes/buyer.routes.js';
+
+const app = express();
+
+// 🔒 Security Middleware
+// Helmet helps secure Express apps by setting various HTTP headers
+app.use(helmet());
+
+// CORS configuration
+app.use(cors({
+  origin: env.cors.origin,
+  credentials: true,
+}));
+
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' })); // Limit JSON payload size
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Rate limiting - apply to all routes
+app.use('/api', apiLimiter);
+
+// Health check route
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// API routes
+// ✅ Explicit domain-based paths only (no backward compatibility for security)
+// This ensures clear domain separation and prevents cross-domain confusion
+
+// Flowers domain routes
+app.use('/api/flowers/auth', flowersAuthRoutes);
+app.use('/api/flowers/products', flowersProductRoutes);
+app.use('/api/flowers/orders', flowersOrderRoutes);
+app.use('/api/flowers/cart', flowersCartRoutes);
+
+// Laptops domain routes
+app.use('/api/laptops/auth', laptopsAuthRoutes);
+app.use('/api/laptops/products', laptopsProductRoutes);
+app.use('/api/laptops/orders', laptopsOrderRoutes);
+app.use('/api/laptops/cart', laptopsCartRoutes);
+app.use('/api/laptops/categories', laptopsCategoryRoutes);
+app.use('/api/laptops/navigation-categories', laptopsNavigationRoutes);
+app.use('/api/laptops/buyer', laptopsBuyerRoutes);
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.originalUrl} not found`,
+  });
+});
+
+// Global error handler (must be last)
+app.use(errorHandler);
+
+export default app;

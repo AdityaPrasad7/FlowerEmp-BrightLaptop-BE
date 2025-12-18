@@ -1,0 +1,37 @@
+/**
+ * Server Entry Point
+ * Initializes database connection and starts the Express server
+ */
+import app from './src/app.js';
+import { connectAllDatabases } from './src/shared/infrastructure/database/connections.js';
+import env from './src/shared/infrastructure/config/env.js';
+
+// Connect to databases (domain-specific: flowers database includes users)
+connectAllDatabases();
+
+// Start server
+const PORT = env.port || 5000;
+
+const server = app.listen(PORT, () => {
+  console.log(`Server running in ${env.nodeEnv} mode on port ${PORT}`);
+  console.log(`🌐 Server URL: http://localhost:${PORT}`);
+  console.log(`📋 Health Check: http://localhost:${PORT}/health`);
+  console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Promise Rejection:', err);
+  server.close(() => {
+    process.exit(1);
+  });
+});
+
+// Handle SIGTERM
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down gracefully...');
+  server.close(() => {
+    console.log('Process terminated');
+  });
+});
+
