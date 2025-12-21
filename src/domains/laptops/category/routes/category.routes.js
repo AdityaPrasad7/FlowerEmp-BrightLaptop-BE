@@ -9,6 +9,7 @@ import {
   getCategoryBySlug,
   updateCategory,
   deleteCategory,
+  deleteCategoryByName,
   getCategoryTypes,
 } from '../controllers/category.controller.js';
 import { getProductsByCategory } from '../../product/controllers/product.controller.js';
@@ -22,6 +23,24 @@ import {
 import { mongoIdParamSchema } from '../../../../shared/common/validators/params.validator.js';
 
 const router = express.Router();
+
+// Protected DELETE routes (must be before parameterized GET routes)
+// Delete by category name (string) - for products that use category strings
+router.delete(
+  '/name/:categoryName',
+  protect,
+  restrictTo('SELLER', 'ADMIN'), // SELLER and ADMIN can delete categories and products
+  deleteCategoryByName
+);
+
+// Delete by category ID (from Category model)
+router.delete(
+  '/:id',
+  protect,
+  restrictTo('SELLER', 'ADMIN'), // SELLER and ADMIN can delete categories and products
+  validateParams(mongoIdParamSchema),
+  deleteCategory
+);
 
 // Public routes
 router.get('/types/list', getCategoryTypes);
@@ -45,13 +64,6 @@ router.put(
   validateParams(mongoIdParamSchema),
   validate(updateCategorySchema),
   updateCategory
-);
-router.delete(
-  '/:id',
-  protect,
-  restrictTo('SELLER', 'ADMIN'),
-  validateParams(mongoIdParamSchema),
-  deleteCategory
 );
 
 export default router;

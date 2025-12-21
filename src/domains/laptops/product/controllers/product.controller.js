@@ -20,28 +20,82 @@ try {
  * @access  Private (Seller/Admin only)
  */
 export const createProduct = asyncHandler(async (req, res, next) => {
-  const { name, description, basePrice, b2bPrice, moq, bulkPricing, stock, category } = req.body;
+  const {
+    name,
+    description,
+    images,
+    brand,
+    condition,
+    basePrice,
+    mrp,
+    discountPercentage,
+    b2bPrice,
+    gstIncluded,
+    gstPercentage,
+    moq,
+    bulkPricing,
+    stock,
+    category,
+    rating,
+    reviewsCount,
+    liveViewers,
+    specifications,
+    configurationVariants,
+    defaultWarranty,
+    warrantyOptions,
+    shipping,
+    offers,
+  } = req.body;
 
   // Validate required fields
   if (!name || basePrice === undefined || stock === undefined || !category) {
     return next(new AppError('Please provide name, basePrice, stock, and category', 400));
   }
 
+  // Validate images
+  if (!images || !Array.isArray(images) || images.length === 0) {
+    return next(new AppError('At least one product image is required', 400));
+  }
+
   // Normalize category: trim and lowercase
   const normalizedCategory = category.trim().toLowerCase();
 
-  // Create product
-  const product = await Product.create({
+  // Prepare product data
+  const productData = {
     name,
     description: description || '',
+    images,
+    brand: brand || undefined,
+    condition: condition || 'new',
     basePrice,
+    mrp: mrp || undefined,
+    discountPercentage: discountPercentage || 0,
     b2bPrice: b2bPrice || undefined,
+    gstIncluded: gstIncluded !== undefined ? gstIncluded : true,
+    gstPercentage: gstPercentage || 18,
     moq: moq || 1,
     bulkPricing: bulkPricing || [],
     stock,
     category: normalizedCategory,
+    rating: rating || 0,
+    reviewsCount: reviewsCount || 0,
+    liveViewers: liveViewers || 0,
+    specifications: specifications || {},
+    configurationVariants: configurationVariants || [],
+    defaultWarranty: defaultWarranty || '12 months',
+    warrantyOptions: warrantyOptions || [],
+    shipping: shipping || { freeShipping: false, estimatedDeliveryDays: 7 },
+    offers: offers || {
+      exchangeOffer: false,
+      exchangeDiscountPercentage: 0,
+      noCostEMI: false,
+      bankOffers: false,
+    },
     sellerId: req.user._id,
-  });
+  };
+
+  // Create product
+  const product = await Product.create(productData);
 
   res.status(201).json({
     success: true,
@@ -59,6 +113,12 @@ export const createProduct = asyncHandler(async (req, res, next) => {
 export const getProducts = asyncHandler(async (req, res, next) => {
   const { sellerId, isActive, category } = req.query;
 
+  // Check if database connection is ready
+  const { isConnected } = await import('../../../../shared/infrastructure/database/connections.js');
+  if (!isConnected('laptops')) {
+    return next(new AppError('Database connection not ready. Please try again in a moment.', 503));
+  }
+
   // Build query
   const query = {};
   if (sellerId) {
@@ -69,14 +129,15 @@ export const getProducts = asyncHandler(async (req, res, next) => {
   } else {
     query.isActive = true;
   }
-  // Filter by category (case-insensitive)
+  // Filter by category (case-insensitive, handle both hyphens and spaces)
   if (category) {
-    query.category = category.trim().toLowerCase();
+    query.category = category.trim().toLowerCase().replace(/-/g, ' ');
   }
 
   const products = await Product.find(query)
     .populate('sellerId', 'name email companyName')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .maxTimeMS(5000); // Set query timeout to 5 seconds
 
   res.status(200).json({
     success: true,
@@ -116,8 +177,33 @@ export const getProduct = asyncHandler(async (req, res, next) => {
  * @access  Private (Seller/Admin only)
  */
 export const updateProduct = asyncHandler(async (req, res, next) => {
-  const { name, description, basePrice, b2bPrice, moq, bulkPricing, stock, isActive, category } =
-    req.body;
+  const {
+    name,
+    description,
+    images,
+    brand,
+    condition,
+    basePrice,
+    mrp,
+    discountPercentage,
+    b2bPrice,
+    gstIncluded,
+    gstPercentage,
+    moq,
+    bulkPricing,
+    stock,
+    isActive,
+    category,
+    rating,
+    reviewsCount,
+    liveViewers,
+    specifications,
+    configurationVariants,
+    defaultWarranty,
+    warrantyOptions,
+    shipping,
+    offers,
+  } = req.body;
 
   const product = await Product.findById(req.params.id);
 
@@ -138,8 +224,15 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   // Update fields
   if (name !== undefined) product.name = name;
   if (description !== undefined) product.description = description;
+  if (images !== undefined) product.images = images;
+  if (brand !== undefined) product.brand = brand;
+  if (condition !== undefined) product.condition = condition;
   if (basePrice !== undefined) product.basePrice = basePrice;
+  if (mrp !== undefined) product.mrp = mrp;
+  if (discountPercentage !== undefined) product.discountPercentage = discountPercentage;
   if (b2bPrice !== undefined) product.b2bPrice = b2bPrice;
+  if (gstIncluded !== undefined) product.gstIncluded = gstIncluded;
+  if (gstPercentage !== undefined) product.gstPercentage = gstPercentage;
   if (moq !== undefined) product.moq = moq;
   if (bulkPricing !== undefined) product.bulkPricing = bulkPricing;
   if (stock !== undefined) product.stock = stock;
@@ -148,6 +241,15 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   if (category !== undefined) {
     product.category = category.trim().toLowerCase();
   }
+  if (rating !== undefined) product.rating = rating;
+  if (reviewsCount !== undefined) product.reviewsCount = reviewsCount;
+  if (liveViewers !== undefined) product.liveViewers = liveViewers;
+  if (specifications !== undefined) product.specifications = specifications;
+  if (configurationVariants !== undefined) product.configurationVariants = configurationVariants;
+  if (defaultWarranty !== undefined) product.defaultWarranty = defaultWarranty;
+  if (warrantyOptions !== undefined) product.warrantyOptions = warrantyOptions;
+  if (shipping !== undefined) product.shipping = shipping;
+  if (offers !== undefined) product.offers = offers;
 
   await product.save();
 
@@ -243,8 +345,15 @@ export const getProductsByCategory = asyncHandler(async (req, res, next) => {
   const { categoryName } = req.params;
   const { sellerId, isActive } = req.query;
 
-  // Normalize category name (trim and lowercase)
-  const normalizedCategory = categoryName.trim().toLowerCase();
+  // Check if database connection is ready
+  const { isConnected } = await import('../../../../shared/infrastructure/database/connections.js');
+  if (!isConnected('laptops')) {
+    return next(new AppError('Database connection not ready. Please try again in a moment.', 503));
+  }
+
+  // Normalize category name (trim, lowercase, and convert hyphens to spaces)
+  // This handles both URL slugs (mini-pcs) and database format (mini pcs)
+  const normalizedCategory = categoryName.trim().toLowerCase().replace(/-/g, ' ');
 
   // Build query
   const query = {
@@ -262,7 +371,8 @@ export const getProductsByCategory = asyncHandler(async (req, res, next) => {
 
   const products = await Product.find(query)
     .populate('sellerId', 'name email companyName')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .maxTimeMS(5000); // Set query timeout to 5 seconds
 
   res.status(200).json({
     success: true,
@@ -270,6 +380,133 @@ export const getProductsByCategory = asyncHandler(async (req, res, next) => {
     data: {
       category: normalizedCategory,
       products,
+    },
+  });
+});
+
+/**
+ * @route   GET /api/laptops/products/best-sellers
+ * @desc    Get best selling products based on soldCount, rating, and reviewsCount
+ * @access  Public
+ */
+export const getBestSellers = asyncHandler(async (req, res, next) => {
+  const { limit = 10 } = req.query;
+
+  // Check database connection
+  const { isConnected } = await import('../../../../shared/infrastructure/database/connections.js');
+  if (!isConnected('laptops')) {
+    return next(new AppError('Database connection not ready. Please try again in a moment.', 503));
+  }
+
+  // Get all active products
+  const products = await Product.find({ isActive: true })
+    .populate('sellerId', 'name email companyName')
+    .maxTimeMS(5000);
+
+  // Calculate best seller score for each product
+  // Score = (rating × reviewsCount × 0.3) + (soldCount × 0.7)
+  const productsWithScore = products.map(product => {
+    const ratingScore = (product.rating || 0) * (product.reviewsCount || 0) * 0.3;
+    const salesScore = (product.soldCount || 0) * 0.7;
+    const bestSellerScore = ratingScore + salesScore;
+    
+    return {
+      ...product.toObject(),
+      bestSellerScore,
+    };
+  });
+
+  // Sort by best seller score (descending) and take top N
+  const bestSellers = productsWithScore
+    .sort((a, b) => b.bestSellerScore - a.bestSellerScore)
+    .slice(0, parseInt(limit));
+
+  res.status(200).json({
+    success: true,
+    count: bestSellers.length,
+    data: {
+      products: bestSellers,
+    },
+  });
+});
+
+/**
+ * @route   GET /api/laptops/products/best-deals
+ * @desc    Get products with best deals (highest discount percentages)
+ * @access  Public
+ */
+export const getBestDeals = asyncHandler(async (req, res, next) => {
+  const { limit = 10 } = req.query;
+
+  // Check database connection
+  const { isConnected } = await import('../../../../shared/infrastructure/database/connections.js');
+  if (!isConnected('laptops')) {
+    return next(new AppError('Database connection not ready. Please try again in a moment.', 503));
+  }
+
+  // Get active products with discounts, sorted by discount percentage (descending)
+  const products = await Product.find({ 
+    isActive: true,
+    discountPercentage: { $gt: 0 } // Only products with discounts
+  })
+    .populate('sellerId', 'name email companyName')
+    .sort({ discountPercentage: -1 }) // Sort by highest discount first
+    .limit(parseInt(limit))
+    .maxTimeMS(5000);
+
+  res.status(200).json({
+    success: true,
+    count: products.length,
+    data: {
+      products,
+    },
+  });
+});
+
+/**
+ * @route   GET /api/laptops/products/top-picks
+ * @desc    Get top picks - products with high ratings and good reviews (quality + popularity)
+ * @access  Public
+ */
+export const getTopPicks = asyncHandler(async (req, res, next) => {
+  const { limit = 10 } = req.query;
+
+  // Check database connection
+  const { isConnected } = await import('../../../../shared/infrastructure/database/connections.js');
+  if (!isConnected('laptops')) {
+    return next(new AppError('Database connection not ready. Please try again in a moment.', 503));
+  }
+
+  // Get active products with minimum rating and reviews
+  // Top picks = products with rating >= 4.0 AND reviewsCount >= 5
+  // Sorted by (rating × reviewsCount) to prioritize both quality and popularity
+  const products = await Product.find({ 
+    isActive: true,
+    rating: { $gte: 4.0 }, // Minimum 4.0 rating
+    reviewsCount: { $gte: 5 } // Minimum 5 reviews
+  })
+    .populate('sellerId', 'name email companyName')
+    .maxTimeMS(5000);
+
+  // Calculate top picks score: rating × reviewsCount (prioritizes both quality and popularity)
+  const productsWithScore = products.map(product => {
+    const topPickScore = (product.rating || 0) * (product.reviewsCount || 0);
+    return {
+      ...product.toObject(),
+      topPickScore,
+    };
+  });
+
+  // Sort by top pick score (descending) and take top N
+  const topPicks = productsWithScore
+    .sort((a, b) => b.topPickScore - a.topPickScore)
+    .slice(0, parseInt(limit));
+
+  res.status(200).json({
+    success: true,
+    count: topPicks.length,
+    data: {
+      products: topPicks,
     },
   });
 });

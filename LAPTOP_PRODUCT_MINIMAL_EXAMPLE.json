@@ -1,0 +1,12 @@
+{
+  "name": "Dell Inspiron 15",
+  "description": "Intel i7 12th Gen laptop with 16GB RAM and 512GB SSD",
+  "images": [
+    "https://res.cloudinary.com/your-cloud/image/upload/v1234567890/laptops/products/dell-inspiron-15-1.jpg",
+    "https://res.cloudinary.com/your-cloud/image/upload/v1234567890/laptops/products/dell-inspiron-15-2.jpg"
+  ],
+  "basePrice": 72990,
+  "stock": 50,
+  "category": "windows"
+}
+

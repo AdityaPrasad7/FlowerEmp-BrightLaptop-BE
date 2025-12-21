@@ -9,6 +9,9 @@ import {
   updateProduct,
   deleteProduct,
   getAllCategories,
+  getBestSellers,
+  getBestDeals,
+  getTopPicks,
 } from '../controllers/product.controller.js';
 import { protect } from '../../../../shared/common/middlewares/auth.middleware.js';
 import { restrictTo } from '../../../../shared/common/middlewares/role.middleware.js';
@@ -23,6 +26,9 @@ const router = express.Router();
 
 // Public routes
 router.get('/categories/list', getAllCategories); // Must be before /:id route
+router.get('/best-sellers', getBestSellers); // Must be before /:id route
+router.get('/best-deals', getBestDeals); // Must be before /:id route
+router.get('/top-picks', getTopPicks); // Must be before /:id route
 router.get('/', getProducts);
 router.get('/:id', validateParams(mongoIdParamSchema), getProduct);
 

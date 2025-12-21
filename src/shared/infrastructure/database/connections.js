@@ -25,7 +25,11 @@ const createConnection = async (name, uri) => {
   try {
     // Create a new connection (not using default mongoose connection)
     const conn = mongoose.createConnection(uri, {
-      // Connection options
+      serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds instead of 30
+      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      connectTimeoutMS: 10000, // Give up initial connection after 10 seconds
+      maxPoolSize: 10, // Maintain up to 10 socket connections
+      minPoolSize: 2, // Maintain at least 2 socket connections
     });
 
     // Handle connection events

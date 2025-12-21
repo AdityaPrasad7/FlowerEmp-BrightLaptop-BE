@@ -181,51 +181,108 @@ export const updateCategory = asyncHandler(async (req, res, next) => {
 
 /**
  * @route   DELETE /api/laptops/categories/:id
- * @desc    Delete category (soft delete by setting isActive to false)
- * @access  Private (Admin/Seller only)
+ * @desc    Delete category and all its products (hard delete)
+ * @access  Private (Admin only)
  */
 export const deleteCategory = asyncHandler(async (req, res, next) => {
+  // SELLER and ADMIN can delete categories and products
+  if (req.user.role !== 'ADMIN' && req.user.role !== 'SELLER') {
+    return next(new AppError('Only sellers and administrators can delete categories', 403));
+  }
+
   const category = await Category.findById(req.params.id);
 
   if (!category) {
     return next(new AppError('Category not found', 404));
   }
 
-  // Check if user is admin or the creator
-  if (req.user.role !== 'ADMIN' && category.createdBy.toString() !== req.user._id.toString()) {
-    return next(
-      new AppError('Not authorized to delete this category', 403)
-    );
+  // Import Product model
+  const Product = (await import('../../product/models/Product.model.js')).default;
+  
+  // Check database connection
+  const { isConnected } = await import('../../../../shared/infrastructure/database/connections.js');
+  if (!isConnected('laptops')) {
+    return next(new AppError('Database connection not ready', 503));
   }
 
-  // Check if already deleted
-  if (!category.isActive) {
-    return res.status(200).json({
-      success: true,
-      message: 'Category is already deleted',
-      data: {
-        category: {
-          _id: category._id,
-          name: category.name,
-          isActive: false,
-        },
-      },
-    });
-  }
+  // Normalize category name (same way products store it)
+  const normalizedCategoryName = category.name.trim().toLowerCase();
 
-  // Soft delete - set isActive to false
-  category.isActive = false;
-  await category.save();
+  // Delete all products with this category
+  const deleteResult = await Product.deleteMany({ 
+    category: normalizedCategoryName 
+  });
+
+  // Delete the category itself
+  await Category.findByIdAndDelete(req.params.id);
 
   res.status(200).json({
     success: true,
-    message: 'Category deleted successfully',
+    message: `Category "${category.name}" and ${deleteResult.deletedCount} product(s) deleted successfully`,
     data: {
       category: {
         _id: category._id,
         name: category.name,
-        isActive: false,
       },
+      deletedProductsCount: deleteResult.deletedCount,
+    },
+  });
+});
+
+/**
+ * @route   DELETE /api/laptops/categories/name/:categoryName
+ * @desc    Delete category by name and all its products (hard delete)
+ * @access  Private (Admin only)
+ */
+export const deleteCategoryByName = asyncHandler(async (req, res, next) => {
+  // SELLER and ADMIN can delete categories and products
+  if (req.user.role !== 'ADMIN' && req.user.role !== 'SELLER') {
+    return next(new AppError('Only sellers and administrators can delete categories', 403));
+  }
+
+  const { categoryName } = req.params;
+
+  // Check database connection
+  const { isConnected } = await import('../../../../shared/infrastructure/database/connections.js');
+  if (!isConnected('laptops')) {
+    return next(new AppError('Database connection not ready', 503));
+  }
+
+  // Import Product model
+  const Product = (await import('../../product/models/Product.model.js')).default;
+
+  // Normalize category name (same way products store it - lowercase, handle hyphens)
+  const normalizedCategoryName = categoryName.trim().toLowerCase().replace(/-/g, ' ');
+
+  // Check if category exists in Category model (optional - products might not have Category entry)
+  const category = await Category.findOne({ 
+    $or: [
+      { name: { $regex: new RegExp(`^${normalizedCategoryName}$`, 'i') } },
+      { slug: normalizedCategoryName.replace(/\s+/g, '-') }
+    ]
+  });
+
+  // Delete all products with this category
+  const deleteResult = await Product.deleteMany({ 
+    category: normalizedCategoryName 
+  });
+
+  // Delete the category from Category model if it exists
+  if (category) {
+    await Category.findByIdAndDelete(category._id);
+  }
+
+  res.status(200).json({
+    success: true,
+    message: `Category "${normalizedCategoryName}" and ${deleteResult.deletedCount} product(s) deleted successfully`,
+    data: {
+      category: category ? {
+        _id: category._id,
+        name: category.name,
+      } : {
+        name: normalizedCategoryName,
+      },
+      deletedProductsCount: deleteResult.deletedCount,
     },
   });
 });

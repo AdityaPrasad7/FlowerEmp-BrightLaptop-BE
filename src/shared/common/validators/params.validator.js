@@ -1,22 +1,26 @@
 /**
  * Parameter Validation Schemas
- * Zod schemas for URL parameters (like :id)
+ * Joi schemas for URL parameters (like :id)
  */
-import { z } from 'zod';
+import Joi from 'joi';
 import { mongoIdSchema } from './common.validator.js';
 
 /**
  * MongoDB ID parameter schema (for :id routes)
  */
-export const mongoIdParamSchema = z.object({
-  id: mongoIdSchema,
+export const mongoIdParamSchema = Joi.object({
+  id: mongoIdSchema.required().messages({
+    'any.required': 'ID is required',
+  }),
 });
 
 /**
  * Product ID parameter schema (for :productId routes)
  */
-export const productIdParamSchema = z.object({
-  productId: mongoIdSchema,
+export const productIdParamSchema = Joi.object({
+  productId: mongoIdSchema.required().messages({
+    'any.required': 'Product ID is required',
+  }),
 });
 
 

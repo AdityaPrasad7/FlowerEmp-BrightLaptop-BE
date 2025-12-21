@@ -22,7 +22,6 @@ const getUserModel = (req) => {
   }
   
   // Default to flowers domain if path doesn't match (for backward compatibility)
-  // This should rarely happen since all routes are domain-specific
   console.warn(`Warning: Could not determine domain from path: ${path}. Defaulting to flowers domain.`);
   return FlowersUser;
 };

@@ -23,6 +23,92 @@ const bulkPricingSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Product specifications schema
+const specificationsSchema = new mongoose.Schema(
+  {
+    screenSize: {
+      type: String,
+      trim: true,
+    },
+    resolution: {
+      type: String,
+      trim: true,
+    },
+    screenType: {
+      type: String,
+      trim: true,
+    },
+    processor: {
+      type: String,
+      trim: true,
+    },
+    generation: {
+      type: String,
+      trim: true,
+    },
+    ram: {
+      type: String,
+      trim: true,
+    },
+    storage: {
+      type: String,
+      trim: true,
+    },
+    touch: {
+      type: Boolean,
+      default: false,
+    },
+    battery: {
+      type: String,
+      trim: true,
+    },
+    adapter: {
+      type: String,
+      trim: true,
+    },
+  },
+  { _id: false }
+);
+
+// Configuration variant schema (for RAM/Storage options)
+const configurationVariantSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      enum: ['RAM', 'STORAGE'],
+      required: true,
+    },
+    value: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    priceAdjustment: {
+      type: Number,
+      default: 0,
+      // Price adjustment for this variant (can be positive or negative)
+    },
+  },
+  { _id: false }
+);
+
+// Warranty option schema
+const warrantyOptionSchema = new mongoose.Schema(
+  {
+    duration: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: [0, 'Warranty price cannot be negative'],
+    },
+  },
+  { _id: false }
+);
+
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -35,11 +121,45 @@ const productSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    // Images - array of image URLs
+    images: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: function (images) {
+          return images.length > 0;
+        },
+        message: 'At least one product image is required',
+      },
+    },
+    // Brand information
+    brand: {
+      type: String,
+      trim: true,
+    },
+    // Condition: 'new' or 'refurbished'
+    condition: {
+      type: String,
+      enum: ['new', 'refurbished'],
+      default: 'new',
+    },
+    // Pricing
     basePrice: {
       type: Number,
       required: [true, 'Base price is required'],
       min: [0, 'Base price cannot be negative'],
       // Retail price for B2C buyers
+    },
+    mrp: {
+      type: Number,
+      min: [0, 'MRP cannot be negative'],
+      // Original MRP (before discount)
+    },
+    discountPercentage: {
+      type: Number,
+      min: [0, 'Discount percentage cannot be negative'],
+      max: [100, 'Discount percentage cannot exceed 100'],
+      default: 0,
     },
     b2bPrice: {
       type: Number,
@@ -47,6 +167,16 @@ const productSchema = new mongoose.Schema(
       // B2B price (lower than basePrice typically)
       // Optional - only set if seller wants to offer B2B pricing
       // B2B buyers get this price when quantity >= MOQ
+    },
+    gstIncluded: {
+      type: Boolean,
+      default: true,
+    },
+    gstPercentage: {
+      type: Number,
+      default: 18,
+      min: [0, 'GST percentage cannot be negative'],
+      max: [100, 'GST percentage cannot exceed 100'],
     },
     moq: {
       type: Number,
@@ -78,6 +208,12 @@ const productSchema = new mongoose.Schema(
       min: [0, 'Stock cannot be negative'],
       default: 0,
     },
+    soldCount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Sold count cannot be negative'],
+      // Tracks total quantity sold (incremented when orders are approved)
+    },
     category: {
       type: String,
       required: [true, 'Category is required'],
@@ -85,6 +221,77 @@ const productSchema = new mongoose.Schema(
       lowercase: true,
       minlength: [2, 'Category must be at least 2 characters'],
       maxlength: [50, 'Category must not exceed 50 characters'],
+    },
+    // Ratings and Reviews
+    rating: {
+      type: Number,
+      default: 0,
+      min: [0, 'Rating cannot be negative'],
+      max: [5, 'Rating cannot exceed 5'],
+    },
+    reviewsCount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Reviews count cannot be negative'],
+    },
+    // Live viewers count (can be updated periodically)
+    liveViewers: {
+      type: Number,
+      default: 0,
+      min: [0, 'Live viewers cannot be negative'],
+    },
+    // Product specifications
+    specifications: {
+      type: specificationsSchema,
+      default: {},
+    },
+    // Configuration variants (RAM/Storage options)
+    configurationVariants: {
+      type: [configurationVariantSchema],
+      default: [],
+    },
+    // Warranty options
+    defaultWarranty: {
+      type: String,
+      default: '12 months',
+      trim: true,
+    },
+    warrantyOptions: {
+      type: [warrantyOptionSchema],
+      default: [],
+    },
+    // Shipping information
+    shipping: {
+      freeShipping: {
+        type: Boolean,
+        default: false,
+      },
+      estimatedDeliveryDays: {
+        type: Number,
+        default: 7,
+        min: [0, 'Estimated delivery days cannot be negative'],
+      },
+    },
+    // Additional offers
+    offers: {
+      exchangeOffer: {
+        type: Boolean,
+        default: false,
+      },
+      exchangeDiscountPercentage: {
+        type: Number,
+        default: 0,
+        min: [0, 'Exchange discount cannot be negative'],
+        max: [100, 'Exchange discount cannot exceed 100'],
+      },
+      noCostEMI: {
+        type: Boolean,
+        default: false,
+      },
+      bankOffers: {
+        type: Boolean,
+        default: false,
+      },
     },
     sellerId: {
       type: mongoose.Schema.Types.ObjectId,

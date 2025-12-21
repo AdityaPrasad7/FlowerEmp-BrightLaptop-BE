@@ -1,50 +1,66 @@
 /**
  * Category Validation Schemas (Laptops Domain)
- * Zod schemas for category endpoints
+ * Joi schemas for category endpoints
  */
-import { z } from 'zod';
+import Joi from 'joi';
 
 /**
  * Category type enum
  */
-const categoryTypeSchema = z.enum(['CONDITION', 'USE_CASE', 'BRAND'], {
-  errorMap: () => ({ message: 'Category type must be CONDITION, USE_CASE, or BRAND' }),
+const categoryTypeSchema = Joi.string().valid('CONDITION', 'USE_CASE', 'BRAND').messages({
+  'any.only': 'Category type must be CONDITION, USE_CASE, or BRAND',
 });
 
 /**
  * Create category validation schema
  */
-export const createCategorySchema = z.object({
-  name: z
-    .string()
+export const createCategorySchema = Joi.object({
+  name: Joi.string()
     .trim()
-    .min(2, 'Category name must be at least 2 characters')
-    .max(100, 'Category name must not exceed 100 characters'),
-  type: categoryTypeSchema,
-  description: z
-    .string()
+    .min(2)
+    .max(100)
+    .required()
+    .messages({
+      'string.min': 'Category name must be at least 2 characters',
+      'string.max': 'Category name must not exceed 100 characters',
+      'any.required': 'Category name is required',
+    }),
+  type: categoryTypeSchema.required().messages({
+    'any.required': 'Category type is required',
+  }),
+  description: Joi.string()
     .trim()
-    .max(500, 'Description must not exceed 500 characters')
+    .max(500)
+    .allow('')
     .optional()
-    .default(''),
+    .default('')
+    .messages({
+      'string.max': 'Description must not exceed 500 characters',
+    }),
 });
 
 /**
  * Update category validation schema (all fields optional)
  */
-export const updateCategorySchema = z.object({
-  name: z
-    .string()
+export const updateCategorySchema = Joi.object({
+  name: Joi.string()
     .trim()
-    .min(2, 'Category name must be at least 2 characters')
-    .max(100, 'Category name must not exceed 100 characters')
-    .optional(),
+    .min(2)
+    .max(100)
+    .optional()
+    .messages({
+      'string.min': 'Category name must be at least 2 characters',
+      'string.max': 'Category name must not exceed 100 characters',
+    }),
   type: categoryTypeSchema.optional(),
-  description: z
-    .string()
+  description: Joi.string()
     .trim()
-    .max(500, 'Description must not exceed 500 characters')
-    .optional(),
-  isActive: z.boolean().optional(),
+    .max(500)
+    .allow('')
+    .optional()
+    .messages({
+      'string.max': 'Description must not exceed 500 characters',
+    }),
+  isActive: Joi.boolean().optional(),
 });
 

@@ -1,0 +1,104 @@
+{
+  "name": "Dell Inspiron 15 | Intel i7 12th Gen | 16GB RAM | 512GB SSD | New",
+  "description": "The Dell Inspiron 15 features an Intel i7 12th Gen processor, 16GB DDR4 RAM, and 512GB SSD storage. Perfect for professionals and students. Comes with Windows 11 and a 12-months warranty. Lightweight, durable, and shipped free across India.",
+  "images": [
+    "https://res.cloudinary.com/your-cloud/image/upload/v1234567890/laptops/products/dell-inspiron-15-1.jpg",
+    "https://res.cloudinary.com/your-cloud/image/upload/v1234567890/laptops/products/dell-inspiron-15-2.jpg",
+    "https://res.cloudinary.com/your-cloud/image/upload/v1234567890/laptops/products/dell-inspiron-15-3.jpg",
+    "https://res.cloudinary.com/your-cloud/image/upload/v1234567890/laptops/products/dell-inspiron-15-4.jpg"
+  ],
+  "brand": "Dell",
+  "condition": "new",
+  "basePrice": 72990,
+  "mrp": 78990,
+  "discountPercentage": 8,
+  "b2bPrice": 62041.5,
+  "gstIncluded": true,
+  "gstPercentage": 18,
+  "moq": 10,
+  "bulkPricing": [
+    {
+      "minQty": 20,
+      "price": 62041.5
+    },
+    {
+      "minQty": 50,
+      "price": 58990
+    },
+    {
+      "minQty": 100,
+      "price": 55990
+    }
+  ],
+  "stock": 50,
+  "category": "windows",
+  "rating": 4.8,
+  "reviewsCount": 42,
+  "liveViewers": 5,
+  "specifications": {
+    "screenSize": "15.6\" FHD",
+    "resolution": "1920x1080",
+    "screenType": "IPS",
+    "processor": "Intel i7 12th Gen",
+    "generation": "12th Gen",
+    "ram": "16GB DDR4",
+    "storage": "512GB SSD",
+    "touch": false,
+    "battery": "Upto 8 hours",
+    "adapter": "65W USB-C Adapter"
+  },
+  "configurationVariants": [
+    {
+      "type": "RAM",
+      "value": "8GB",
+      "priceAdjustment": -5000
+    },
+    {
+      "type": "RAM",
+      "value": "16GB",
+      "priceAdjustment": 0
+    },
+    {
+      "type": "RAM",
+      "value": "32GB",
+      "priceAdjustment": 15000
+    },
+    {
+      "type": "STORAGE",
+      "value": "256GB",
+      "priceAdjustment": -3000
+    },
+    {
+      "type": "STORAGE",
+      "value": "512GB",
+      "priceAdjustment": 0
+    },
+    {
+      "type": "STORAGE",
+      "value": "1TB",
+      "priceAdjustment": 8000
+    }
+  ],
+  "defaultWarranty": "12 months",
+  "warrantyOptions": [
+    {
+      "duration": "Extra 1 Year",
+      "price": 1499
+    },
+    {
+      "duration": "Extra 2 Years",
+      "price": 2499
+    }
+  ],
+  "shipping": {
+    "freeShipping": true,
+    "estimatedDeliveryDays": 7
+  },
+  "offers": {
+    "exchangeOffer": true,
+    "exchangeDiscountPercentage": 50,
+    "noCostEMI": true,
+    "bankOffers": true
+  }
+}
+

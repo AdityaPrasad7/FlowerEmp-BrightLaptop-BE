@@ -24,7 +24,7 @@ const generateToken = (userId) => {
  * @access  Public
  */
 export const register = asyncHandler(async (req, res, next) => {
-  const { name, email, password, role, companyName } = req.body;
+  const { name, email, password, role, companyName, gstNumber, businessAddress } = req.body;
 
   // Validate required fields
   if (!name || !email || !password || !role) {
@@ -37,9 +37,17 @@ export const register = asyncHandler(async (req, res, next) => {
     return next(new AppError('Invalid role', 400));
   }
 
-  // Validate company name for B2B buyers
-  if (role === 'B2B_BUYER' && !companyName) {
-    return next(new AppError('Company name is required for B2B buyers', 400));
+  // Validate B2B buyer required fields
+  if (role === 'B2B_BUYER') {
+    if (!companyName) {
+      return next(new AppError('Company name is required for B2B buyers', 400));
+    }
+    if (!gstNumber) {
+      return next(new AppError('GST number is required for B2B buyers', 400));
+    }
+    if (!businessAddress) {
+      return next(new AppError('Business address is required for B2B buyers', 400));
+    }
   }
 
   // Check if user already exists
@@ -48,14 +56,23 @@ export const register = asyncHandler(async (req, res, next) => {
     return next(new AppError('User already exists with this email', 400));
   }
 
-  // Create user
-  const user = await User.create({
+  // Prepare user data
+  const userData = {
     name,
     email,
     password,
     role,
-    companyName: role === 'B2B_BUYER' ? companyName : undefined,
-  });
+  };
+
+  // Add B2B specific fields only if role is B2B_BUYER
+  if (role === 'B2B_BUYER') {
+    userData.companyName = companyName;
+    userData.gstNumber = gstNumber?.toUpperCase().trim();
+    userData.businessAddress = businessAddress;
+  }
+
+  // Create user
+  const user = await User.create(userData);
 
   // Generate token
   const token = generateToken(user._id);

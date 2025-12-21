@@ -99,7 +99,7 @@ export const addToCart = asyncHandler(async (req, res, next) => {
   cart.calculateTotal();
   await cart.save();
 
-  await cart.populate('items.productId', 'name description basePrice b2bPrice moq');
+  await cart.populate('items.productId', 'name description basePrice b2bPrice moq images brand specifications');
 
   res.status(200).json({
     success: true,
@@ -118,7 +118,7 @@ export const addToCart = asyncHandler(async (req, res, next) => {
 export const getCart = asyncHandler(async (req, res, next) => {
   let cart = await Cart.findOne({ userId: req.user._id }).populate(
     'items.productId',
-    'name description basePrice b2bPrice moq stock isActive'
+    'name description basePrice b2bPrice moq stock isActive images brand specifications mrp discountPercentage'
   );
 
   if (!cart) {
@@ -237,7 +237,7 @@ export const updateCartItem = asyncHandler(async (req, res, next) => {
   cart.calculateTotal();
   await cart.save();
 
-  await cart.populate('items.productId', 'name description basePrice b2bPrice moq');
+  await cart.populate('items.productId', 'name description basePrice b2bPrice moq images brand specifications');
 
   res.status(200).json({
     success: true,
@@ -274,7 +274,7 @@ export const removeFromCart = asyncHandler(async (req, res, next) => {
   cart.calculateTotal();
   await cart.save();
 
-  await cart.populate('items.productId', 'name description basePrice b2bPrice moq');
+  await cart.populate('items.productId', 'name description basePrice b2bPrice moq images brand specifications');
 
   res.status(200).json({
     success: true,

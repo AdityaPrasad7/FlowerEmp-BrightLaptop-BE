@@ -98,19 +98,38 @@ const getUserModel = () => {
   if (isConnected('flowers')) {
     try {
       const conn = getConnection('flowers');
-      // Always use flowers connection when available (re-create model to ensure correct connection)
-      User = conn.model('User', userSchema);
+      // Check if model already exists on this connection
+      if (conn.models.User) {
+        User = conn.models.User;
+      } else {
+        // Create model on flowers connection
+        User = conn.model('User', userSchema);
+      }
     } catch (error) {
+      console.error('Error getting flowers User model:', error);
       // Fallback to default connection if flowers connection fails
       if (!User) {
-        User = mongoose.model('User', userSchema);
+        // Check if model exists on default connection before creating
+        if (mongoose.models.FlowersUser) {
+          User = mongoose.models.FlowersUser;
+        } else {
+          // Use unique name to avoid conflict with laptops domain
+          User = mongoose.model('FlowersUser', userSchema);
+        }
       }
     }
   } else {
     // Connection not ready yet - use default mongoose connection temporarily
     // This allows the model to be imported before connectAllDatabases() runs
     if (!User) {
-      User = mongoose.model('User', userSchema);
+      // Check if model already exists before creating
+      if (mongoose.models.FlowersUser) {
+        User = mongoose.models.FlowersUser;
+      } else {
+        // Use a unique model name for flowers domain on default connection
+        // This prevents conflicts with laptops domain User model
+        User = mongoose.model('FlowersUser', userSchema);
+      }
     }
   }
   return User;

@@ -22,6 +22,10 @@ import laptopsProductRoutes from './domains/laptops/product/routes/product.route
 import laptopsOrderRoutes from './domains/laptops/order/routes/order.routes.js';
 import laptopsCartRoutes from './domains/laptops/cart/routes/cart.routes.js';
 import laptopsCategoryRoutes from './domains/laptops/category/routes/category.routes.js';
+import laptopsUploadRoutes from './domains/laptops/upload/routes/upload.routes.js';
+
+// Import flowers domain routes (including auth)
+import flowersUploadRoutes from './domains/flowers/upload/routes/upload.routes.js';
 
 const app = express();
 
@@ -30,9 +34,34 @@ const app = express();
 app.use(helmet());
 
 // CORS configuration
+// Allow multiple origins for development (Vite runs on 5173, React on 3000)
+const allowedOrigins = [
+  'http://localhost:5173', // Vite default port
+  'http://localhost:3000', // React default port
+  'http://localhost:5174', // Vite alternative port
+  env.cors.origin,
+].filter(Boolean); // Remove undefined values
+
 app.use(cors({
-  origin: env.cors.origin,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin) || env.cors.origin === '*') {
+      callback(null, true);
+    } else {
+      // In development, allow any localhost origin
+      if (env.nodeEnv === 'development' && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 // Body parsing middleware
@@ -61,6 +90,7 @@ app.use('/api/flowers/products', flowersProductRoutes);
 app.use('/api/flowers/orders', flowersOrderRoutes);
 app.use('/api/flowers/cart', flowersCartRoutes);
 app.use('/api/flowers/categories', flowersCategoryRoutes);
+app.use('/api/flowers/upload', flowersUploadRoutes);
 
 // Laptops domain routes
 app.use('/api/laptops/auth', laptopsAuthRoutes);
@@ -68,6 +98,7 @@ app.use('/api/laptops/products', laptopsProductRoutes);
 app.use('/api/laptops/orders', laptopsOrderRoutes);
 app.use('/api/laptops/cart', laptopsCartRoutes);
 app.use('/api/laptops/categories', laptopsCategoryRoutes);
+app.use('/api/laptops/upload', laptopsUploadRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

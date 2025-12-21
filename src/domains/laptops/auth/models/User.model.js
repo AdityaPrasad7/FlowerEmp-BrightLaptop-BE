@@ -47,6 +47,39 @@ const userSchema = new mongoose.Schema(
         message: 'Company name is required for B2B buyers',
       },
     },
+    gstNumber: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      // Required only for B2B users
+      validate: {
+        validator: function (value) {
+          if (this.role === 'B2B_BUYER' && !value) {
+            return false;
+          }
+          // GST number format validation (15 characters: 2 state code + 10 PAN + 3 entity + 1 check digit + 1 blank)
+          if (value && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(value)) {
+            return false;
+          }
+          return true;
+        },
+        message: 'Valid GST number is required for B2B buyers (format: 29AAJCK8673K1ZN)',
+      },
+    },
+    businessAddress: {
+      type: String,
+      trim: true,
+      // Required only for B2B users
+      validate: {
+        validator: function (value) {
+          if (this.role === 'B2B_BUYER' && !value) {
+            return false;
+          }
+          return true;
+        },
+        message: 'Business address is required for B2B buyers',
+      },
+    },
     isVerified: {
       type: Boolean,
       default: false,
@@ -98,19 +131,38 @@ const getUserModel = () => {
   if (isConnected('laptops')) {
     try {
       const conn = getConnection('laptops');
-      // Always use laptops connection when available (re-create model to ensure correct connection)
-      User = conn.model('User', userSchema);
+      // Check if model already exists on this connection
+      if (conn.models.User) {
+        User = conn.models.User;
+      } else {
+        // Create model on laptops connection
+        User = conn.model('User', userSchema);
+      }
     } catch (error) {
+      console.error('Error getting laptops User model:', error);
       // Fallback to default connection if laptops connection fails
       if (!User) {
-        User = mongoose.model('User', userSchema);
+        // Check if model exists on default connection before creating
+        if (mongoose.models.LaptopsUser) {
+          User = mongoose.models.LaptopsUser;
+        } else {
+          // Use unique name to avoid conflict with flowers domain
+          User = mongoose.model('LaptopsUser', userSchema);
+        }
       }
     }
   } else {
     // Connection not ready yet - use default mongoose connection temporarily
     // This allows the model to be imported before connectAllDatabases() runs
     if (!User) {
-      User = mongoose.model('User', userSchema);
+      // Check if model already exists before creating
+      if (mongoose.models.LaptopsUser) {
+        User = mongoose.models.LaptopsUser;
+      } else {
+        // Use a unique model name for laptops domain on default connection
+        // This prevents conflicts with flowers domain User model
+        User = mongoose.model('LaptopsUser', userSchema);
+      }
     }
   }
   return User;

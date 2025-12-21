@@ -86,7 +86,10 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   if (defaultStatus === 'APPROVED') {
     for (const item of orderItems) {
       await Product.findByIdAndUpdate(item.productId, {
-        $inc: { stock: -item.quantity },
+        $inc: { 
+          stock: -item.quantity,
+          soldCount: item.quantity, // Increment sold count
+        },
       });
     }
   }
@@ -118,7 +121,7 @@ export const getOrders = asyncHandler(async (req, res, next) => {
   }
 
   const orders = await Order.find(query)
-    .populate('products.productId', 'name description')
+    .populate('products.productId', 'name description images brand specifications')
     .populate('userId', 'name email companyName')
     .sort({ createdAt: -1 });
 
@@ -138,7 +141,7 @@ export const getOrders = asyncHandler(async (req, res, next) => {
  */
 export const getOrder = asyncHandler(async (req, res, next) => {
   const order = await Order.findById(req.params.id)
-    .populate('products.productId', 'name description basePrice moq')
+    .populate('products.productId', 'name description basePrice moq images brand specifications')
     .populate('userId', 'name email companyName');
 
   if (!order) {
@@ -203,7 +206,10 @@ export const approveOrder = asyncHandler(async (req, res, next) => {
   for (const item of order.products) {
     const productId = item.productId._id || item.productId;
     await Product.findByIdAndUpdate(productId, {
-      $inc: { stock: -item.quantity },
+      $inc: { 
+        stock: -item.quantity,
+        soldCount: item.quantity, // Increment sold count
+      },
     });
   }
 
