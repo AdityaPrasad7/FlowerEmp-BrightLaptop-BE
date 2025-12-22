@@ -125,6 +125,9 @@ export const createProductSchema = Joi.object({
       'string.uri': 'Image must be a valid URL',
     }),
   brand: Joi.string().trim().optional(),
+  brandImage: Joi.string().uri().trim().allow('').optional().messages({
+    'string.uri': 'Brand image must be a valid URL',
+  }),
   condition: Joi.string().valid('new', 'refurbished').optional().default('new').messages({
     'any.only': 'Condition must be either new or refurbished',
   }),
@@ -239,6 +242,9 @@ export const updateProductSchema = Joi.object({
       'string.uri': 'Image must be a valid URL',
     }),
   brand: Joi.string().trim().optional(),
+  brandImage: Joi.string().uri().trim().allow('').optional().messages({
+    'string.uri': 'Brand image must be a valid URL',
+  }),
   condition: Joi.string().valid('new', 'refurbished').optional().messages({
     'any.only': 'Condition must be either new or refurbished',
   }),

@@ -137,6 +137,11 @@ const productSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    brandImage: {
+      type: String,
+      trim: true,
+      // URL or path to brand logo/image
+    },
     // Condition: 'new' or 'refurbished'
     condition: {
       type: String,

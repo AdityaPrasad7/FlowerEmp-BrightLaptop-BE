@@ -25,6 +25,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     description,
     images,
     brand,
+    brandImage,
     condition,
     basePrice,
     mrp,
@@ -66,6 +67,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     description: description || '',
     images,
     brand: brand || undefined,
+    brandImage: brandImage || undefined,
     condition: condition || 'new',
     basePrice,
     mrp: mrp || undefined,
@@ -182,6 +184,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     description,
     images,
     brand,
+    brandImage,
     condition,
     basePrice,
     mrp,
@@ -226,6 +229,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   if (description !== undefined) product.description = description;
   if (images !== undefined) product.images = images;
   if (brand !== undefined) product.brand = brand;
+  if (brandImage !== undefined) product.brandImage = brandImage;
   if (condition !== undefined) product.condition = condition;
   if (basePrice !== undefined) product.basePrice = basePrice;
   if (mrp !== undefined) product.mrp = mrp;
@@ -459,6 +463,111 @@ export const getBestDeals = asyncHandler(async (req, res, next) => {
     count: products.length,
     data: {
       products,
+    },
+  });
+});
+
+/**
+ * @route   GET /api/laptops/products/search
+ * @desc    Search products by name, brand, category, or description
+ * @access  Public
+ */
+export const searchProducts = asyncHandler(async (req, res, next) => {
+  const { q, limit = 10 } = req.query;
+
+  // Check database connection
+  const { isConnected } = await import('../../../../shared/infrastructure/database/connections.js');
+  if (!isConnected('laptops')) {
+    return next(new AppError('Database connection not ready. Please try again in a moment.', 503));
+  }
+
+  // If no search query, return empty results
+  if (!q || q.trim().length === 0) {
+    return res.status(200).json({
+      success: true,
+      count: 0,
+      data: {
+        products: [],
+      },
+    });
+  }
+
+  const searchQuery = q.trim();
+  const searchLimit = Math.min(parseInt(limit), 20); // Max 20 results
+
+  // Create search regex for case-insensitive search
+  const searchRegex = new RegExp(searchQuery, 'i');
+
+  // Search in name, brand, category, and description
+  const products = await Product.find({
+    isActive: true,
+    $or: [
+      { name: { $regex: searchRegex } },
+      { brand: { $regex: searchRegex } },
+      { category: { $regex: searchRegex } },
+      { description: { $regex: searchRegex } },
+    ],
+  })
+    .populate('sellerId', 'name email companyName')
+    .limit(searchLimit)
+    .maxTimeMS(5000);
+
+  res.status(200).json({
+    success: true,
+    count: products.length,
+    query: searchQuery,
+    data: {
+      products,
+    },
+  });
+});
+
+/**
+ * @route   GET /api/laptops/products/brands
+ * @desc    Get unique brands with their images from products
+ * @access  Public
+ */
+export const getBrands = asyncHandler(async (req, res, next) => {
+  // Check database connection
+  const { isConnected } = await import('../../../../shared/infrastructure/database/connections.js');
+  if (!isConnected('laptops')) {
+    return next(new AppError('Database connection not ready. Please try again in a moment.', 503));
+  }
+
+  // Get all active products with brand and brandImage
+  const products = await Product.find({ 
+    isActive: true,
+    brand: { $exists: true, $ne: null, $ne: '' }
+  })
+    .select('brand brandImage')
+    .maxTimeMS(5000);
+
+  // Extract unique brands with their images
+  const brandMap = new Map();
+  
+  products.forEach(product => {
+    const brandName = product.brand?.trim();
+    if (brandName) {
+      // If brand doesn't exist in map, or if current product has brandImage and map doesn't
+      if (!brandMap.has(brandName) || 
+          (product.brandImage && !brandMap.get(brandName).image)) {
+        brandMap.set(brandName, {
+          name: brandName,
+          image: product.brandImage || null,
+        });
+      }
+    }
+  });
+
+  // Convert map to array
+  const brands = Array.from(brandMap.values())
+    .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
+
+  res.status(200).json({
+    success: true,
+    count: brands.length,
+    data: {
+      brands,
     },
   });
 });

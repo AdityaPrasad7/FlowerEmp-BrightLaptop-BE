@@ -40,7 +40,7 @@ export const createRateLimiter = ({
  * 100 requests per 15 minutes
  */
 export const apiLimiter = createRateLimiter({
-  max: 100,
+  max: 200,
   windowMs: 15 * 60 * 1000, // 15 minutes
   errorMessage: 'Too many requests from this IP, please try again later.',
 });
@@ -63,7 +63,7 @@ export const authLimiter = createRateLimiter({
  * 7 registrations per hour
  */
 export const registerLimiter = createRateLimiter({
-  max: 7,
+  max: 10,
   windowMs: 60 * 60 * 1000, // 1 hour
   errorMessage: 'Too many registration attempts from this IP, please try again after 1 hour.',
 });

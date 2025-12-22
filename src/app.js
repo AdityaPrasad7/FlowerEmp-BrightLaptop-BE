@@ -23,6 +23,7 @@ import laptopsOrderRoutes from './domains/laptops/order/routes/order.routes.js';
 import laptopsCartRoutes from './domains/laptops/cart/routes/cart.routes.js';
 import laptopsCategoryRoutes from './domains/laptops/category/routes/category.routes.js';
 import laptopsUploadRoutes from './domains/laptops/upload/routes/upload.routes.js';
+import laptopsContactRoutes from './domains/laptops/contact/routes/contact.routes.js';
 
 // Import flowers domain routes (including auth)
 import flowersUploadRoutes from './domains/flowers/upload/routes/upload.routes.js';
@@ -99,6 +100,7 @@ app.use('/api/laptops/orders', laptopsOrderRoutes);
 app.use('/api/laptops/cart', laptopsCartRoutes);
 app.use('/api/laptops/categories', laptopsCategoryRoutes);
 app.use('/api/laptops/upload', laptopsUploadRoutes);
+app.use('/api/laptops/contact', laptopsContactRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

@@ -41,5 +41,14 @@ export default {
     apiKey: process.env.CLOUDINARY_API_KEY || '',
     apiSecret: process.env.CLOUDINARY_API_SECRET || '',
   },
+  email: {
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.EMAIL_PORT) || 587,
+    secure: process.env.EMAIL_SECURE === 'true' || false,
+    user: process.env.EMAIL_USER || '',
+    password: process.env.EMAIL_PASSWORD || '',
+    fromName: process.env.EMAIL_FROM_NAME || 'Bright Laptop',
+    contactEmail: process.env.EMAIL_CONTACT_EMAIL || process.env.EMAIL_USER || '',
+  },
 };
 
