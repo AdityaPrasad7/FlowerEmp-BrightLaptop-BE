@@ -14,13 +14,13 @@ import { AppError, asyncHandler } from '../utils/errorHandler.js';
  */
 const getUserModel = (req) => {
   const path = req.originalUrl || req.path || '';
-  
+
   if (path.includes('/api/flowers/')) {
     return FlowersUser;
   } else if (path.includes('/api/laptops/')) {
     return LaptopsUser;
   }
-  
+
   // Default to flowers domain if path doesn't match (for backward compatibility)
   console.warn(`Warning: Could not determine domain from path: ${path}. Defaulting to flowers domain.`);
   return FlowersUser;
@@ -76,6 +76,10 @@ export const protect = asyncHandler(async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
+    console.error('JWT Verification Error:', error.message);
+    if (error.name === 'TokenExpiredError') {
+      return next(new AppError('Your session has expired. Please log in again.', 401));
+    }
     return next(new AppError('Not authorized to access this route', 401));
   }
 });

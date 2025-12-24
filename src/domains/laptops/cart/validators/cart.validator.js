@@ -19,6 +19,17 @@ export const addToCartSchema = Joi.object({
     'number.min': 'Quantity must be at least 1',
     'any.required': 'Quantity is required',
   }),
+  selectedConfig: Joi.object({
+    ram: Joi.string().allow('', null).optional(),
+    storage: Joi.string().allow('', null).optional(),
+  }).optional().allow(null),
+  selectedWarranty: Joi.alternatives().try(
+    Joi.string().allow('default', 'Default', ''),
+    Joi.object({
+      duration: Joi.string(),
+      price: Joi.number(),
+    })
+  ).optional().allow(null),
 });
 
 /**

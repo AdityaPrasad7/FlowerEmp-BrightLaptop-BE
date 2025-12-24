@@ -29,6 +29,14 @@ const cartItemSchema = new mongoose.Schema(
       min: [0, 'Total price cannot be negative'],
       // unitPrice * quantity
     },
+    selectedWarranty: {
+      duration: { type: String },
+      price: { type: Number, default: 0 }
+    },
+    selectedConfig: {
+      ram: { type: String },
+      storage: { type: String }
+    }
   },
   { _id: false }
 );
@@ -88,7 +96,7 @@ const getCartModel = () => {
   return Cart;
 };
 
-export default new Proxy(function() {}, {
+export default new Proxy(function () { }, {
   construct(target, args) {
     return new (getCartModel())(...args);
   },

@@ -196,7 +196,7 @@ const productSchema = new mongoose.Schema(
       validate: {
         validator: function (bulkPricing) {
           if (bulkPricing.length === 0) return true;
-          
+
           for (let i = 1; i < bulkPricing.length; i++) {
             if (bulkPricing[i].minQty <= bulkPricing[i - 1].minQty) {
               return false;
@@ -356,7 +356,7 @@ const getProductModel = () => {
   return Product;
 };
 
-export default new Proxy(function() {}, {
+export default new Proxy(function () { }, {
   construct(target, args) {
     return new (getProductModel())(...args);
   },

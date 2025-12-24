@@ -17,10 +17,12 @@ import {
  * @access  Private
  */
 export const createOrder = asyncHandler(async (req, res, next) => {
-  const { products, notes } = req.body;
+  const { products, shippingAddress, paymentMethod, notes } = req.body;
 
-  if (!products || !Array.isArray(products) || products.length === 0) {
-    return next(new AppError('Please provide at least one product', 400));
+  console.log('CREATE ORDER BODY:', JSON.stringify(req.body, null, 2));
+
+  if (!products || products.length === 0) {
+    return next(new AppError('No order items', 400));
   }
 
   const orderType = req.user.role === 'B2B_BUYER' ? 'B2B' : 'B2C';
@@ -55,7 +57,7 @@ export const createOrder = asyncHandler(async (req, res, next) => {
       );
     }
 
-    const unitPrice = calculateUnitPrice(
+    let unitPrice = calculateUnitPrice(
       product.basePrice,
       item.quantity,
       req.user.role,
@@ -64,10 +66,56 @@ export const createOrder = asyncHandler(async (req, res, next) => {
       product.bulkPricing || []
     );
 
+    // Handle selected warranty
+    let warrantyObj = { duration: 'Default', price: 0 };
+
+    // Defensive check
+    let warrantyKey = item.selectedWarranty;
+    if (typeof item.selectedWarranty === 'object' && item.selectedWarranty !== null) {
+      warrantyKey = item.selectedWarranty.duration || item.selectedWarranty.id;
+    }
+
+    if (warrantyKey && warrantyKey !== 'default') {
+      // Match by duration (case-insensitive, trimmed)
+      const warrantyOption = product.warrantyOptions.find(w =>
+        w.duration.trim().toLowerCase() === warrantyKey.trim().toLowerCase()
+      );
+
+      if (warrantyOption) {
+        unitPrice += warrantyOption.price;
+        warrantyObj = {
+          duration: warrantyOption.duration,
+          price: warrantyOption.price
+        };
+      }
+    }
+
+    // Handle selected configuration variants (RAM/Storage)
+    if (item.selectedConfig && product.configurationVariants && product.configurationVariants.length > 0) {
+      if (item.selectedConfig.ram) {
+        const ramVariant = product.configurationVariants.find(
+          v => v.type === 'RAM' && v.value.trim().toLowerCase() === item.selectedConfig.ram.trim().toLowerCase()
+        );
+        if (ramVariant) {
+          unitPrice += ramVariant.priceAdjustment;
+        }
+      }
+      if (item.selectedConfig.storage) {
+        const storageVariant = product.configurationVariants.find(
+          v => v.type === 'STORAGE' && v.value.trim().toLowerCase() === item.selectedConfig.storage.trim().toLowerCase()
+        );
+        if (storageVariant) {
+          unitPrice += storageVariant.priceAdjustment;
+        }
+      }
+    }
+
     orderItems.push({
       productId: product._id,
       quantity: item.quantity,
       priceAtPurchase: unitPrice,
+      selectedWarranty: warrantyObj,
+      selectedConfig: item.selectedConfig || {}
     });
   }
 
@@ -86,7 +134,7 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   if (defaultStatus === 'APPROVED') {
     for (const item of orderItems) {
       await Product.findByIdAndUpdate(item.productId, {
-        $inc: { 
+        $inc: {
           stock: -item.quantity,
           soldCount: item.quantity, // Increment sold count
         },
@@ -206,7 +254,7 @@ export const approveOrder = asyncHandler(async (req, res, next) => {
   for (const item of order.products) {
     const productId = item.productId._id || item.productId;
     await Product.findByIdAndUpdate(productId, {
-      $inc: { 
+      $inc: {
         stock: -item.quantity,
         soldCount: item.quantity, // Increment sold count
       },

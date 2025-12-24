@@ -22,6 +22,14 @@ const orderItemSchema = new mongoose.Schema(
       required: [true, 'Price at purchase is required'],
       min: [0, 'Price cannot be negative'],
     },
+    selectedWarranty: {
+      duration: { type: String },
+      price: { type: Number, default: 0 }
+    },
+    selectedConfig: {
+      ram: { type: String },
+      storage: { type: String }
+    }
   },
   { _id: false }
 );
@@ -196,7 +204,7 @@ const getOrderModel = () => {
   return Order;
 };
 
-export default new Proxy(function() {}, {
+export default new Proxy(function () { }, {
   construct(target, args) {
     return new (getOrderModel())(...args);
   },
