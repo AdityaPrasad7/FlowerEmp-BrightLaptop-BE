@@ -147,11 +147,66 @@ export const addToCart = asyncHandler(async (req, res, next) => {
   const totalPrice = unitPrice * quantity;
   console.log(`[Add To Cart Debug] Final Calculated UnitPrice: ${unitPrice}, Total: ${totalPrice}`);
 
-  const existingItemIndex = cart.items.findIndex(
-    (item) => item.productId.toString() === productId.toString()
-  );
+  // Helper function to compare configurations
+  const configMatches = (itemConfig, requestConfig) => {
+    if (!itemConfig && !requestConfig) return true;
+    if (!itemConfig || !requestConfig) return false;
+    
+    const itemRam = (itemConfig.ram || '').trim().toLowerCase();
+    const itemStorage = (itemConfig.storage || '').trim().toLowerCase();
+    const requestRam = (requestConfig.ram || '').trim().toLowerCase();
+    const requestStorage = (requestConfig.storage || '').trim().toLowerCase();
+    
+    return itemRam === requestRam && itemStorage === requestStorage;
+  };
+
+  // Helper function to compare warranties
+  const warrantyMatches = (itemWarranty, requestWarranty) => {
+    if (!requestWarranty || requestWarranty === 'default' || requestWarranty === 'Default') {
+      // If request is default, match if item is also default
+      return (!itemWarranty || !itemWarranty.duration || itemWarranty.duration === 'Default' || itemWarranty.price === 0);
+    }
+    
+    if (!itemWarranty) return false;
+    
+    let requestWarrantyKey = requestWarranty;
+    if (typeof requestWarranty === 'object' && requestWarranty !== null) {
+      requestWarrantyKey = requestWarranty.duration || requestWarranty.id;
+    }
+    
+    const itemWarrantyDuration = (itemWarranty.duration || '').trim().toLowerCase();
+    const requestWarrantyDuration = String(requestWarrantyKey || '').trim().toLowerCase();
+    
+    return itemWarrantyDuration === requestWarrantyDuration;
+  };
+
+  // Find existing item with same productId AND same configuration
+  const existingItemIndex = cart.items.findIndex((item) => {
+    const sameProduct = item.productId.toString() === productId.toString();
+    if (!sameProduct) return false;
+    
+    const configMatch = configMatches(item.selectedConfig, selectedConfig);
+    const warrantyMatch = warrantyMatches(item.selectedWarranty, selectedWarranty);
+    
+    console.log(`[Cart Match Debug] Checking item:`, {
+      productId: item.productId.toString(),
+      sameProduct,
+      itemConfig: item.selectedConfig,
+      requestConfig: selectedConfig,
+      configMatch,
+      itemWarranty: item.selectedWarranty,
+      requestWarranty: selectedWarranty,
+      warrantyMatch,
+      matches: configMatch && warrantyMatch
+    });
+    
+    return configMatch && warrantyMatch;
+  });
 
   if (existingItemIndex > -1) {
+    // Found existing item with same productId AND same configuration (RAM, Storage, Warranty)
+    // Update quantity and recalculate price
+    console.log(`[Cart Match Debug] ✅ Found matching item at index ${existingItemIndex}, updating quantity`);
     const newQuantity = cart.items[existingItemIndex].quantity + quantity;
 
     if (product.stock < newQuantity) {
@@ -272,7 +327,10 @@ export const addToCart = asyncHandler(async (req, res, next) => {
     }
 
   } else {
-    // New item - ensure config is saved properly
+    // No matching item found - this is either a new product OR same product with different configuration
+    // Create a new cart item (different configs = different items)
+    console.log(`[Cart Match Debug] ❌ No matching item found - creating new cart item`);
+    console.log(`[Cart Match Debug] Reason: Different product OR different configuration (RAM/Storage/Warranty)`);
     const newItemConfig = (selectedConfig && Object.keys(selectedConfig).length > 0) ? selectedConfig : {};
     console.log(`[Add New Item Debug] Adding new item with config:`, JSON.stringify(newItemConfig));
     console.log(`[Add New Item Debug] Warranty:`, JSON.stringify(warrantyObj));
