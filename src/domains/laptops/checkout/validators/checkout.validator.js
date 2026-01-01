@@ -106,10 +106,10 @@ export const checkoutSchema = Joi.object({
   shippingAddress: addressSchema.required().messages({
     'any.required': 'Shipping address is required',
   }),
-  
+
   // Billing Address (optional - if not provided, uses shipping address)
   billingAddress: addressSchema.optional(),
-  
+
   // Contact Information
   contactEmail: emailSchema.required().messages({
     'any.required': 'Contact email is required',
@@ -124,12 +124,12 @@ export const checkoutSchema = Joi.object({
       'string.max': 'Contact phone cannot exceed 20 characters',
       'any.required': 'Contact phone is required',
     }),
-  
+
   // Payment Information
   paymentMethod: paymentMethodEnum.required().messages({
     'any.required': 'Payment method is required',
   }),
-  
+
   // Delivery Preferences (Delivery Scheduling)
   deliveryDate: Joi.string()
     .optional()
@@ -152,7 +152,7 @@ export const checkoutSchema = Joi.object({
     .messages({
       'string.max': 'Delivery time cannot exceed 50 characters',
     }),
-  
+
   // Special Instructions/Notes
   notes: Joi.string()
     .trim()

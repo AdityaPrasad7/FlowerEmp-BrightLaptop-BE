@@ -22,6 +22,17 @@ const userSchema = new mongoose.Schema(
       trim: true,
       match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email'],
     },
+    phone: {
+      type: String,
+      trim: true,
+      validate: {
+        validator: function (v) {
+          // Allow empty or validate phone
+          return !v || /^\+?\d{8,15}$/.test(v);
+        },
+        message: 'Please provide a valid phone number'
+      }
+    },
     password: {
       type: String,
       required: [true, 'Password is required'],
@@ -51,6 +62,24 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    otp: {
+      type: String,
+      select: false, // Don't return OTP by default
+    },
+    otpExpires: {
+      type: Date,
+      select: false,
+    },
+    addresses: [{
+      fullName: { type: String, required: true },
+      addressLine1: { type: String, required: true },
+      city: { type: String, required: true },
+      state: { type: String, required: true },
+      postalCode: { type: String, required: true },
+      country: { type: String, required: true },
+      phone: { type: String, required: true },
+      isDefault: { type: Boolean, default: false } // To mark default address
+    }],
   },
   {
     timestamps: true, // Adds createdAt and updatedAt
@@ -136,7 +165,7 @@ const getUserModel = () => {
 };
 
 // Export a Proxy that lazily initializes the model on first access
-export default new Proxy(function() {}, {
+export default new Proxy(function () { }, {
   // Handle constructor calls: new User()
   construct(target, args) {
     return new (getUserModel())(...args);

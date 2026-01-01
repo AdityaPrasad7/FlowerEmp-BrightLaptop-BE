@@ -19,6 +19,8 @@ export const checkout = asyncHandler(async (req, res, next) => {
     billingAddress,
     paymentMethod,
     notes,
+    deliveryDate,
+    timeSlot,
   } = req.body;
 
   // Get user's cart
@@ -78,28 +80,36 @@ export const checkout = asyncHandler(async (req, res, next) => {
   // Calculate total amount
   const totalAmount = calculateOrderTotal(orderItems);
 
-  // Determine default status based on order type
-  const defaultStatus = orderType === 'B2C' ? 'APPROVED' : 'PENDING';
+  // Determine status based on payment method
+  // B2B is always PENDING until approved by admin
+  // B2C: COD -> APPROVED (Stock deducted immediately)
+  // B2C: Online -> PENDING (Stock deducted after payment success)
+  let initialStatus = 'PENDING';
+  if (orderType === 'B2C' && paymentMethod === 'COD') {
+    initialStatus = 'APPROVED';
+  }
 
   // Use billing address if provided, otherwise use shipping address
   const finalBillingAddress = billingAddress || shippingAddress;
 
-  // Create order (simplified - no delivery scheduling for flowers)
+  // Create order
   const order = await Order.create({
     userId: req.user._id,
     products: orderItems,
     orderType,
-    status: defaultStatus,
+    status: initialStatus,
     totalAmount,
     shippingAddress: shippingAddress || undefined,
     billingAddress: finalBillingAddress || undefined,
     paymentMethod,
-    paymentStatus: paymentMethod === 'COD' ? 'PENDING' : 'PENDING',
+    paymentStatus: 'PENDING',
     notes: notes || '',
+    deliveryDate,
+    timeSlot,
   });
 
-  // Update product stock (only if order is approved)
-  if (defaultStatus === 'APPROVED') {
+  // Update product stock ONLY if order is immediately APPROVED (e.g. COD)
+  if (initialStatus === 'APPROVED') {
     for (const item of orderItems) {
       await Product.findByIdAndUpdate(item.productId, {
         $inc: { stock: -item.quantity },

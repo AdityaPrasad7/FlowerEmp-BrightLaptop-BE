@@ -16,14 +16,21 @@ export const uploadImage = async (fileBuffer, folder = 'laptops/products', optio
   try {
     return new Promise((resolve, reject) => {
       const uploadOptions = {
-        folder: folder,
         resource_type: 'image',
+        timeout: 120000, // 120 seconds
         ...options,
       };
 
+      console.log(`Starting Cloudinary upload for file. Size: ${fileBuffer.length} bytes`);
+      const start = Date.now();
+
       cloudinary.uploader
         .upload_stream(uploadOptions, (error, result) => {
+          const duration = Date.now() - start;
+          console.log(`Cloudinary upload finished. Duration: ${duration}ms`);
+
           if (error) {
+            console.error('Cloudinary upload stream error:', error);
             return reject(new AppError('Image upload failed', 500));
           }
           resolve({
@@ -38,6 +45,7 @@ export const uploadImage = async (fileBuffer, folder = 'laptops/products', optio
         .end(fileBuffer);
     });
   } catch (error) {
+    console.error('Error in uploadImage:', error);
     throw new AppError('Failed to upload image', 500);
   }
 };
@@ -50,14 +58,18 @@ export const uploadImage = async (fileBuffer, folder = 'laptops/products', optio
  * @returns {Promise<Array<Object>>} Array of upload results
  */
 export const uploadMultipleImages = async (
-  fileBuffers,
+  files,
   folder = 'laptops/products',
   options = {}
 ) => {
   try {
-    const uploadPromises = fileBuffers.map((buffer) => uploadImage(buffer, folder, options));
+    const uploadPromises = files.map((file) => {
+      const buffer = file.buffer || file;
+      return uploadImage(buffer, folder, options);
+    });
     return await Promise.all(uploadPromises);
   } catch (error) {
+    console.error('Error in uploadMultipleImages:', error);
     throw new AppError('Failed to upload images', 500);
   }
 };

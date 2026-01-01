@@ -6,6 +6,8 @@ import {
   register,
   login,
   getMe,
+  logout,
+  addAddress,
 } from '../controllers/auth.controller.js';
 import { protect } from '../../../../shared/common/middlewares/auth.middleware.js';
 import { authLimiter, registerLimiter } from '../../../../shared/common/middlewares/rateLimiter.middleware.js';
@@ -18,8 +20,14 @@ const router = express.Router();
 router.post('/register', registerLimiter, validate(registerSchema), register);
 router.post('/login', authLimiter, validate(loginSchema), login);
 
+// OTP Routes
+router.post('/send-otp', authLimiter, (await import('../controllers/auth.controller.js')).sendLoginOTP);
+router.post('/login-with-otp', authLimiter, (await import('../controllers/auth.controller.js')).verifyLoginOTP);
+
 // Protected routes
 router.get('/me', protect, getMe);
+router.post('/address', protect, addAddress);
+router.post('/logout', logout);
 
 export default router;
 

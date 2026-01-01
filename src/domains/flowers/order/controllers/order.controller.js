@@ -18,6 +18,8 @@ import {
  * @access  Private
  */
 export const createOrder = asyncHandler(async (req, res, next) => {
+  console.log("inside create order api");
+
   const { products, notes } = req.body;
 
   // Validate required fields
@@ -90,8 +92,9 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   const totalAmount = calculateOrderTotal(orderItems);
 
   // Determine default status based on order type
-  // B2C orders are auto-approved, B2B orders need approval
-  const defaultStatus = orderType === 'B2C' ? 'APPROVED' : 'PENDING';
+  // FIXED: All orders start as PENDING per business requirements
+  // Admin maintains full control over the workflow
+  const defaultStatus = 'PENDING';
 
   // Create order
   const order = await Order.create({
@@ -103,14 +106,8 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     notes: notes || '',
   });
 
-  // Update product stock (only if order is approved)
-  if (defaultStatus === 'APPROVED') {
-    for (const item of orderItems) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: { stock: -item.quantity },
-      });
-    }
-  }
+  // NOTE: Stock is NOT deducted here anymore because status is PENDING.
+  // Stock will be deducted when Admin approves/confirms the order.
 
   // Populate product details for response
   await order.populate('products.productId', 'name description');
@@ -253,7 +250,7 @@ export const approveOrder = asyncHandler(async (req, res, next) => {
  */
 export const updateOrderStatus = asyncHandler(async (req, res, next) => {
   const { status } = req.body;
-  const validStatuses = ['PENDING', 'APPROVED', 'SHIPPED', 'CANCELLED'];
+  const validStatuses = ['PENDING', 'APPROVED', 'PACKED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'SHIPPED', 'CANCELLED'];
 
   if (!status || !validStatuses.includes(status)) {
     return next(
@@ -284,6 +281,57 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
       order,
     },
     message: 'Order status updated successfully',
+  });
+});
+
+/**
+ * @route   POST /api/flowers/orders/track
+ * @desc    Track order public (Verify with email)
+ * @access  Public
+ */
+export const trackOrder = asyncHandler(async (req, res, next) => {
+  const { orderId, email } = req.body;
+
+  if (!orderId || !email) {
+    return next(new AppError('Please provide Order ID and Email', 400));
+  }
+
+  // Find order by custom orderId (short ID)
+  // We need to handle potential case where user provides # prefix
+  const cleanOrderId = orderId.replace('#', '').trim().toUpperCase();
+  console.log("cleanOrderId", cleanOrderId);
+
+  const order = await Order.findOne({ orderId: cleanOrderId }).populate('userId', 'email');
+
+  // Fallback: If not found by orderId, try finding by _id (legacy support)
+  // This is helpful if some orders don't have orderId yet or user used long ID
+  let foundOrder = order;
+  if (!foundOrder && orderId.length === 24) {
+    try {
+      foundOrder = await Order.findById(orderId).populate('userId', 'email');
+    } catch (e) { }
+  }
+
+  if (!foundOrder) {
+    return next(new AppError('Order not found', 404));
+  }
+
+  // Security Check: Verify Email matches Order Owner
+  if (!foundOrder.userId || foundOrder.userId.email.toLowerCase() !== email.toLowerCase()) {
+    return next(new AppError('Order details do not match provided email', 403));
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      status: {
+        id: foundOrder.orderId || foundOrder._id, // Return the ID we have
+        state: foundOrder.status,
+        date: foundOrder.updatedAt,
+        paymentStatus: foundOrder.paymentStatus,
+        totalAmount: foundOrder.totalAmount
+      }
+    },
   });
 });
 

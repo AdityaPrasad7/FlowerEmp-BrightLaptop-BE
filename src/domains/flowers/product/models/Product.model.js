@@ -4,8 +4,9 @@
  */
 import mongoose from 'mongoose';
 import { getConnection, isConnected } from '../../../../shared/infrastructure/database/connections.js';
-// Import User model to ensure it's registered on the flowers connection for populate()
+// Import User and Occasion models to ensure they are registered on the flowers connection for populate()
 import UserModel from '../../auth/models/User.model.js';
+import OccasionModel from '../../occasion/models/Occasion.model.js';
 
 const productSchema = new mongoose.Schema(
   {
@@ -18,6 +19,10 @@ const productSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: '',
+    },
+    images: {
+      type: [String],
+      default: [],
     },
     basePrice: {
       type: Number,
@@ -33,10 +38,36 @@ const productSchema = new mongoose.Schema(
     category: {
       type: String,
       required: [true, 'Category is required'],
-      trim: true,
-      lowercase: true,
-      minlength: [2, 'Category must be at least 2 characters'],
-      maxlength: [50, 'Category must not exceed 50 characters'],
+      enum: ['Flowers', 'Cakes', 'Chocolates'],
+      default: 'Flowers'
+    },
+    occasions: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Occasion',
+    }],
+    // Flower specific fields
+    flowerType: {
+      type: String,
+      enum: [
+        'Tulips', 'Lilies', 'Spray Roses', 'Mixed Flowers', 'Orchids',
+        'Carnations', 'Hydrangeas', 'Gerbera', 'Ranunculus', 'Peony',
+        'Roses', 'Sunflowers', 'Forever Rose'
+      ],
+    },
+    flowerArrangement: {
+      type: String,
+      enum: ['Flower Basket', 'Flower Bouquets', 'Flower Box', 'Flower Vase'],
+    },
+    flowerColor: {
+      type: String,
+      enum: [
+        'Blue Flowers', 'Purple Flowers', 'Pink Flowers', 'Red Flowers',
+        'Yellow Flowers', 'White Flowers', 'Mixed Flowers'
+      ],
+    },
+    vip: {
+      type: Boolean,
+      default: false,
     },
     sellerId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -56,7 +87,9 @@ const productSchema = new mongoose.Schema(
 // Index for faster queries
 productSchema.index({ sellerId: 1 });
 productSchema.index({ isActive: 1 });
-productSchema.index({ category: 1 }); // Index for category filtering
+productSchema.index({ category: 1 });
+productSchema.index({ occasion: 1 });
+productSchema.index({ vip: 1 });
 
 // Lazy-load the model
 let Product = null;
@@ -79,9 +112,18 @@ const getProductModel = () => {
           }
         } catch (e) {
           // User model initialization will happen when populate() is called
-          // Mongoose will handle the registration at that point
         }
       }
+
+      // Ensure Occasion model is registered on this connection before creating Product
+      if (!conn.models.Occasion) {
+        try {
+          if (OccasionModel) {
+            void OccasionModel.modelName;
+          }
+        } catch (e) { }
+      }
+
       Product = conn.model('Product', productSchema);
     } catch (error) {
       if (!Product) {
@@ -96,7 +138,7 @@ const getProductModel = () => {
   return Product;
 };
 
-export default new Proxy(function() {}, {
+export default new Proxy(function () { }, {
   construct(target, args) {
     return new (getProductModel())(...args);
   },

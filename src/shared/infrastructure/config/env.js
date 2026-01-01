@@ -41,6 +41,10 @@ export default {
     apiKey: process.env.CLOUDINARY_API_KEY || '',
     apiSecret: process.env.CLOUDINARY_API_SECRET || '',
   },
+  myFatoorah: {
+    url: process.env.MYFATOORAH_API_URL || 'https://apitest.myfatoorah.com',
+    token: process.env.MYFATOORAH_API_TOKEN,
+  },
   email: {
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.EMAIL_PORT) || 587,
@@ -49,6 +53,11 @@ export default {
     password: process.env.EMAIL_PASSWORD || '',
     fromName: process.env.EMAIL_FROM_NAME || 'Bright Laptop',
     contactEmail: process.env.EMAIL_CONTACT_EMAIL || process.env.EMAIL_USER || '',
+  },
+  twilio: {
+    accountSid: process.env.TWILIO_ACCOUNT_SID,
+    authToken: process.env.TWILIO_AUTH_TOKEN,
+    phoneNumber: process.env.TWILIO_PHONE_NUMBER,
   },
 };
 

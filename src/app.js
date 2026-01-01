@@ -26,7 +26,12 @@ import laptopsUploadRoutes from './domains/laptops/upload/routes/upload.routes.j
 import laptopsContactRoutes from './domains/laptops/contact/routes/contact.routes.js';
 
 // Import flowers domain routes (including auth)
+// Import flowers domain routes (including auth)
 import flowersUploadRoutes from './domains/flowers/upload/routes/upload.routes.js';
+import flowersUserRoutes from './domains/flowers/user/routes/user.routes.js';
+// import flowersUserRoutes from './domains/flowers/user/routes/user.routes.js';
+import flowersPaymentRoutes from './domains/flowers/payment/routes/payment.routes.js';
+import flowersOccasionRoutes from './domains/flowers/occasion/routes/occasion.routes.js';
 
 const app = express();
 
@@ -47,7 +52,7 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     // Check if origin is in allowed list
     if (allowedOrigins.includes(origin) || env.cors.origin === '*') {
       callback(null, true);
@@ -70,7 +75,7 @@ app.use(express.json({ limit: '10mb' })); // Limit JSON payload size
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Rate limiting - apply to all routes
-app.use('/api', apiLimiter);
+// app.use('/api', apiLimiter);
 
 // Health check route
 app.get('/health', (req, res) => {
@@ -92,6 +97,10 @@ app.use('/api/flowers/orders', flowersOrderRoutes);
 app.use('/api/flowers/cart', flowersCartRoutes);
 app.use('/api/flowers/categories', flowersCategoryRoutes);
 app.use('/api/flowers/upload', flowersUploadRoutes);
+// app.use('/api/flowers/users', flowersUserRoutes);
+app.use('/api/flowers/users', flowersUserRoutes);
+app.use('/api/flowers/payment', flowersPaymentRoutes);
+app.use('/api/flowers/occasions', flowersOccasionRoutes);
 
 // Laptops domain routes
 app.use('/api/laptops/auth', laptopsAuthRoutes);

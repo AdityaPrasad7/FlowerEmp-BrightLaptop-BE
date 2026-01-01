@@ -19,6 +19,11 @@ const server = app.listen(PORT, () => {
   console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
 });
 
+// INCREASE TIMEOUT for slow uploads (5 minutes)
+server.timeout = 300000;
+server.keepAliveTimeout = 300000;
+server.headersTimeout = 301000;
+
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled Promise Rejection:', err);

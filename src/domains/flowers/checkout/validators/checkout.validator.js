@@ -69,13 +69,13 @@ const paymentMethodEnum = z.enum(
 export const checkoutSchema = z.object({
   // Shipping Address (optional for flowers)
   shippingAddress: addressSchema.optional(),
-  
+
   // Billing Address (optional)
   billingAddress: addressSchema.optional(),
-  
+
   // Payment Information
   paymentMethod: paymentMethodEnum,
-  
+
   // Special Instructions/Notes
   notes: z
     .string()
@@ -83,6 +83,10 @@ export const checkoutSchema = z.object({
     .max(500, 'Notes cannot exceed 500 characters')
     .optional()
     .default(''),
+
+  // Delivery Details
+  deliveryDate: z.coerce.date({ invalid_type_error: "Invalid delivery date" }),
+  timeSlot: z.string().min(1, 'Time slot is required'),
 });
 
 

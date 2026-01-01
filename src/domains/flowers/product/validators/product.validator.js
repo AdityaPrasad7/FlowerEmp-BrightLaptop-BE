@@ -22,11 +22,29 @@ export const createProductSchema = z.object({
     .default(''),
   basePrice: positiveNumberSchema,
   stock: positiveIntegerSchema,
-  category: z
-    .string()
-    .trim()
-    .min(2, 'Category must be at least 2 characters')
-    .max(50, 'Category must not exceed 50 characters'),
+  category: z.enum(['Flowers', 'Cakes', 'Chocolates'], {
+    errorMap: () => ({ message: 'Category must be Flowers, Cakes, or Chocolates' })
+  }),
+  occasions: z.array(
+    z.string().trim().regex(/^[0-9a-fA-F]{24}$/, 'Occasion must be a valid ID')
+  ).min(1, 'At least one occasion is required'),
+  vip: z.boolean().optional().default(false),
+  flowerType: z.enum([
+    'Tulips', 'Lilies', 'Spray Roses', 'Mixed Flowers', 'Orchids',
+    'Carnations', 'Hydrangeas', 'Gerbera', 'Ranunculus', 'Peony',
+    'Roses', 'Sunflowers', 'Forever Rose'
+  ]).or(z.literal('')).optional(),
+  flowerArrangement: z.enum(['Flower Basket', 'Flower Bouquets', 'Flower Box', 'Flower Vase']).or(z.literal('')).optional(),
+  flowerColor: z.enum([
+    'Blue Flowers', 'Purple Flowers', 'Pink Flowers', 'Red Flowers',
+    'Yellow Flowers', 'White Flowers', 'Mixed Flowers'
+  ]).or(z.literal('')).optional(),
+}).refine((data) => {
+  if (data.category === 'Flowers') {
+    // Optional: Add strict validation if needed, for now just allow optional
+    return true;
+  }
+  return true;
 });
 
 /**
@@ -47,12 +65,21 @@ export const updateProductSchema = z.object({
   basePrice: positiveNumberSchema.optional(),
   stock: positiveIntegerSchema.optional(),
   isActive: z.boolean().optional(),
-  category: z
-    .string()
-    .trim()
-    .min(2, 'Category must be at least 2 characters')
-    .max(50, 'Category must not exceed 50 characters')
-    .optional(),
+  category: z.enum(['Flowers', 'Cakes', 'Chocolates']).optional(),
+  occasions: z.array(
+    z.string().trim().regex(/^[0-9a-fA-F]{24}$/, 'Occasion must be a valid ID')
+  ).optional(),
+  vip: z.boolean().optional(),
+  flowerType: z.enum([
+    'Tulips', 'Lilies', 'Spray Roses', 'Mixed Flowers', 'Orchids',
+    'Carnations', 'Hydrangeas', 'Gerbera', 'Ranunculus', 'Peony',
+    'Roses', 'Sunflowers', 'Forever Rose'
+  ]).or(z.literal('')).optional(),
+  flowerArrangement: z.enum(['Flower Basket', 'Flower Bouquets', 'Flower Box', 'Flower Vase']).or(z.literal('')).optional(),
+  flowerColor: z.enum([
+    'Blue Flowers', 'Purple Flowers', 'Pink Flowers', 'Red Flowers',
+    'Yellow Flowers', 'White Flowers', 'Mixed Flowers'
+  ]).or(z.literal('')).optional(),
 });
 
 

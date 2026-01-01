@@ -27,10 +27,13 @@ export const addToCart = asyncHandler(async (req, res, next) => {
   // Debug: Log user ID to verify consistency
   console.log('Adding to cart for userId:', req.user._id.toString());
   console.log('User email:', req.user.email);
+  console.log("came here in cart");
 
   // Find or create cart for user
   let cart = await Cart.findOne({ userId: req.user._id });
-  
+  console.log("came here in cart 111");
+
+
   // Debug: Log cart status
   if (cart) {
     console.log('Cart found with', cart.items.length, 'items');
@@ -116,7 +119,7 @@ export const addToCart = asyncHandler(async (req, res, next) => {
   await cart.save();
 
   // Populate product details
-  await cart.populate('items.productId', 'name description basePrice');
+  await cart.populate('items.productId', 'name description basePrice images');
 
   res.status(200).json({
     success: true,
@@ -136,10 +139,10 @@ export const getCart = asyncHandler(async (req, res, next) => {
   // Debug: Log user ID to verify consistency
   console.log('Getting cart for userId:', req.user._id.toString());
   console.log('User email:', req.user.email);
-  
+
   let cart = await Cart.findOne({ userId: req.user._id }).populate(
     'items.productId',
-    'name description basePrice stock isActive'
+    'name description basePrice stock isActive images'
   );
 
   // Debug: Log cart status
@@ -160,12 +163,12 @@ export const getCart = asyncHandler(async (req, res, next) => {
     // Recalculate prices based on current user role and update cart
     // This ensures prices are always current
     let cartUpdated = false;
-    
+
     // Filter out inactive or deleted products (safer approach - don't modify while iterating)
     const validItems = [];
     for (const item of cart.items) {
       const product = item.productId;
-      
+
       // Skip inactive or deleted products
       if (!product || !product.isActive) {
         console.log('Removing inactive product from cart:', product?._id || 'unknown');
@@ -186,7 +189,7 @@ export const getCart = asyncHandler(async (req, res, next) => {
         item.totalPrice = newUnitPrice * item.quantity;
         cartUpdated = true;
       }
-      
+
       validItems.push(item);
     }
 
@@ -275,7 +278,7 @@ export const updateCartItem = asyncHandler(async (req, res, next) => {
   cart.calculateTotal();
   await cart.save();
 
-  await cart.populate('items.productId', 'name description basePrice b2bPrice moq');
+  await cart.populate('items.productId', 'name description basePrice b2bPrice moq images');
 
   res.status(200).json({
     success: true,
@@ -313,7 +316,7 @@ export const removeFromCart = asyncHandler(async (req, res, next) => {
   cart.calculateTotal();
   await cart.save();
 
-  await cart.populate('items.productId', 'name description basePrice b2bPrice moq');
+  await cart.populate('items.productId', 'name description basePrice b2bPrice moq images');
 
   res.status(200).json({
     success: true,

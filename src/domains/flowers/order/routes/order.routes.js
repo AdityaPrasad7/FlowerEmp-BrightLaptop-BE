@@ -17,8 +17,12 @@ import {
   updateOrderStatusSchema,
 } from '../validators/order.validator.js';
 import { mongoIdParamSchema } from '../../../../shared/common/validators/params.validator.js';
+import { trackOrder } from '../controllers/order.controller.js';
 
 const router = express.Router();
+
+// Public routes
+router.post('/track', trackOrder);
 
 // All routes require authentication
 router.use(protect);

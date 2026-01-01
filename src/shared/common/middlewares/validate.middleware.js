@@ -1,107 +1,123 @@
 /**
- * Joi Validation Middleware
- * Validates request data using Joi schemas
+ * Validation Middleware
+ * Validates request data against Joi schemas
  */
-import Joi from 'joi';
 import { AppError } from '../utils/errorHandler.js';
 
 /**
  * Validate request body using Joi schema
- * @param {Joi.ObjectSchema} schema - Joi validation schema
+ * @param {Object} schema - Joi validation schema
  * @returns {Function} Express middleware function
  */
 export const validate = (schema) => {
-  return async (req, res, next) => {
-    try {
-      // Validate and parse request body
+  return (req, res, next) => {
+    // Determine the part of request to validate (default to body if not specified)
+    // Joi schemas often validate just the body, but sometimes are wrapper objects like { body: ..., query: ... }
+
+    // If schema has 'validate' method directly (it's a Joi schema)
+    if (typeof schema.validate === 'function') {
       const { error, value } = schema.validate(req.body, {
-        abortEarly: false, // Return all validation errors, not just the first one
-        stripUnknown: true, // Remove unknown fields
+        abortEarly: false,
+        stripUnknown: true,
+        errors: { label: 'key' }
       });
-      
+
       if (error) {
-        // Handle Joi validation errors
-        const errorMessages = error.details.map((detail) => {
-          const path = detail.path.join('.');
-          return path ? `${path}: ${detail.message}` : detail.message;
-        });
-        return next(new AppError(errorMessages.join(', '), 400));
+        const errorMessage = error.details.map((detail) => detail.message).join(', ');
+        return next(new AppError(errorMessage, 400));
       }
-      
-      // Replace req.body with validated and sanitized data
+
       req.body = value;
-      
-      next();
-    } catch (err) {
-      // Handle other errors
-      return next(new AppError(err.message || 'Validation failed', 400));
+      return next();
     }
+
+    // If validation object is passed (e.g. { body: schema })
+    if (schema.body) {
+      const { error, value } = schema.body.validate(req.body, {
+        abortEarly: false,
+        stripUnknown: true,
+        errors: { label: 'key' }
+      });
+      if (error) {
+        const errorMessage = error.details.map((detail) => detail.message).join(', ');
+        return next(new AppError(errorMessage, 400));
+      }
+      req.body = value;
+    }
+
+    if (schema.query) {
+      const { error, value } = schema.query.validate(req.query, {
+        abortEarly: false,
+        stripUnknown: true,
+        errors: { label: 'key' }
+      });
+      if (error) {
+        const errorMessage = error.details.map((detail) => detail.message).join(', ');
+        return next(new AppError(errorMessage, 400));
+      }
+      req.query = value;
+    }
+
+    if (schema.params) {
+      const { error, value } = schema.params.validate(req.params, {
+        abortEarly: false,
+        stripUnknown: true,
+        errors: { label: 'key' }
+      });
+      if (error) {
+        const errorMessage = error.details.map((detail) => detail.message).join(', ');
+        return next(new AppError(errorMessage, 400));
+      }
+      req.params = value;
+    }
+
+    next();
   };
 };
 
 /**
  * Validate request parameters using Joi schema
- * @param {Joi.ObjectSchema} schema - Joi validation schema
+ * @param {Object} schema - Joi validation schema
  * @returns {Function} Express middleware function
  */
 export const validateParams = (schema) => {
-  return async (req, res, next) => {
-    try {
-      // Validate and parse request parameters
-      const { error, value } = schema.validate(req.params, {
-        abortEarly: false,
-        stripUnknown: true,
-      });
-      
-      if (error) {
-        // Handle Joi validation errors
-        const errorMessages = error.details.map((detail) => {
-          const path = detail.path.join('.');
-          return path ? `${path}: ${detail.message}` : detail.message;
-        });
-        return next(new AppError(errorMessages.join(', '), 400));
-      }
-      
-      // Replace req.params with validated data
-      req.params = value;
-      
-      next();
-    } catch (err) {
-      return next(new AppError(err.message || 'Invalid parameters', 400));
+  return (req, res, next) => {
+    const { error, value } = schema.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+      errors: { label: 'key' }
+    });
+
+    if (error) {
+      const errorMessage = error.details.map((detail) => detail.message).join(', ');
+      return next(new AppError(errorMessage, 400));
     }
+
+    req.params = value;
+    next();
   };
 };
 
 /**
  * Validate query parameters using Joi schema
- * @param {Joi.ObjectSchema} schema - Joi validation schema
+ * @param {Object} schema - Joi validation schema
  * @returns {Function} Express middleware function
  */
 export const validateQuery = (schema) => {
-  return async (req, res, next) => {
-    try {
-      // Validate and parse query parameters
-      const { error, value } = schema.validate(req.query, {
-        abortEarly: false,
-        stripUnknown: true,
-      });
-      
-      if (error) {
-        // Handle Joi validation errors
-        const errorMessages = error.details.map((detail) => {
-          const path = detail.path.join('.');
-          return path ? `${path}: ${detail.message}` : detail.message;
-        });
-        return next(new AppError(errorMessages.join(', '), 400));
-      }
-      
-      // Replace req.query with validated data
-      req.query = value;
-      
-      next();
-    } catch (err) {
-      return next(new AppError(err.message || 'Invalid query parameters', 400));
+  return (req, res, next) => {
+    const { error, value } = schema.validate(req.query, {
+      abortEarly: false,
+      stripUnknown: true,
+      errors: { label: 'key' }
+    });
+
+    if (error) {
+      const errorMessage = error.details.map((detail) => detail.message).join(', ');
+      return next(new AppError(errorMessage, 400));
     }
+
+    req.query = value;
+    next();
   };
 };
 

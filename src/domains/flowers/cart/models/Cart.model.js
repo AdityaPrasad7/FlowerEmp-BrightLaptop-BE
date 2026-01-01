@@ -4,6 +4,10 @@
  */
 import mongoose from 'mongoose';
 
+import { getConnection, isConnected } from '../../../../shared/infrastructure/database/connections.js';
+import ProductModel from '../../product/models/Product.model.js';
+import UserModel from '../../auth/models/User.model.js';
+
 const cartItemSchema = new mongoose.Schema(
   {
     productId: {
@@ -66,8 +70,57 @@ cartSchema.methods.calculateTotal = function () {
   return this.totalAmount;
 };
 
-const Cart = mongoose.model('Cart', cartSchema);
+// Lazy-load the model
+let Cart = null;
 
-export default Cart;
+const getCartModel = () => {
+  if (isConnected('flowers')) {
+    try {
+      const conn = getConnection('flowers');
+
+      // Ensure Product model is registered
+      if (!conn.models.Product) {
+        try {
+          if (ProductModel) void ProductModel.modelName;
+        } catch (e) { }
+      }
+
+      // Ensure User model is registered
+      if (!conn.models.User) {
+        try {
+          if (UserModel) void UserModel.modelName;
+        } catch (e) { }
+      }
+
+      Cart = conn.model('Cart', cartSchema);
+    } catch (error) {
+      if (!Cart) {
+        Cart = mongoose.model('Cart', cartSchema);
+      }
+    }
+  } else {
+    if (!Cart) {
+      Cart = mongoose.model('Cart', cartSchema);
+    }
+  }
+  return Cart;
+};
+
+export default new Proxy(function () { }, {
+  construct(target, args) {
+    return new (getCartModel())(...args);
+  },
+  get(target, prop) {
+    const model = getCartModel();
+    const value = model[prop];
+    if (typeof value === 'function') {
+      return value.bind(model);
+    }
+    return value;
+  },
+  apply(target, thisArg, args) {
+    return getCartModel().apply(thisArg, args);
+  }
+});
 
 

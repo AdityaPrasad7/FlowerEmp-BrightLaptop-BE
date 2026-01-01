@@ -48,7 +48,7 @@ const createConnection = async (name, uri) => {
 
     // Wait for connection to be ready
     await conn.asPromise();
-    
+
     return conn;
   } catch (error) {
     console.error(`❌ Error connecting to ${name} database:`, error.message);
@@ -64,6 +64,7 @@ const createConnection = async (name, uri) => {
 export const connectAllDatabases = async () => {
   try {
     console.log('🔄 Connecting to databases...\n');
+    console.log(`🌸 FLOWERS URI: ${env.databases.flowers}`);
 
     // Validate required database URIs
     if (!env.databases.flowers) {
@@ -96,7 +97,7 @@ export const getConnection = (name) => {
   if (!name || (name !== 'flowers' && name !== 'laptops')) {
     throw new Error(`Invalid connection name "${name}". Must be "flowers" or "laptops".`);
   }
-  
+
   const conn = connections[name];
   if (!conn) {
     throw new Error(`Database connection "${name}" not found. Available: ${Object.keys(connections).join(', ')}`);
@@ -110,7 +111,7 @@ export const getConnection = (name) => {
  */
 export const closeAllConnections = async () => {
   console.log('🔄 Closing all database connections...');
-  
+
   for (const [name, conn] of Object.entries(connections)) {
     if (conn && conn.readyState === 1) {
       await conn.close();
