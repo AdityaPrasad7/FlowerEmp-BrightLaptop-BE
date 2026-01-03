@@ -84,7 +84,14 @@ export const connectAllDatabases = async () => {
     console.log('\n✅ All databases connected successfully!\n');
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
-    process.exit(1);
+    // In serverless environments, don't exit process - let individual routes handle errors
+    // This allows the function to start even if DB connection fails initially
+    if (process.env.VERCEL) {
+      console.warn('⚠️  Running in serverless mode - continuing despite DB connection error');
+    } else {
+      process.exit(1);
+    }
+    throw error; // Re-throw so caller can handle it
   }
 };
 
