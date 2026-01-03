@@ -58,8 +58,8 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     return next(new AppError('At least one product image is required', 400));
   }
 
-  // Normalize category: trim and lowercase
-  const normalizedCategory = category.trim().toLowerCase();
+  // Normalize category: trim, lowercase, and replace hyphens with spaces
+  const normalizedCategory = category.trim().toLowerCase().replace(/-/g, ' ');
 
   // Prepare product data
   const productData = {
@@ -241,9 +241,9 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   if (bulkPricing !== undefined) product.bulkPricing = bulkPricing;
   if (stock !== undefined) product.stock = stock;
   if (isActive !== undefined) product.isActive = isActive;
-  // Normalize category if provided
+  // Normalize category if provided (replace hyphens with spaces)
   if (category !== undefined) {
-    product.category = category.trim().toLowerCase();
+    product.category = category.trim().toLowerCase().replace(/-/g, ' ');
   }
   if (rating !== undefined) product.rating = rating;
   if (reviewsCount !== undefined) product.reviewsCount = reviewsCount;
@@ -413,7 +413,7 @@ export const getBestSellers = asyncHandler(async (req, res, next) => {
     const ratingScore = (product.rating || 0) * (product.reviewsCount || 0) * 0.3;
     const salesScore = (product.soldCount || 0) * 0.7;
     const bestSellerScore = ratingScore + salesScore;
-    
+
     return {
       ...product.toObject(),
       bestSellerScore,
@@ -449,7 +449,7 @@ export const getBestDeals = asyncHandler(async (req, res, next) => {
   }
 
   // Get active products with discounts, sorted by discount percentage (descending)
-  const products = await Product.find({ 
+  const products = await Product.find({
     isActive: true,
     discountPercentage: { $gt: 0 } // Only products with discounts
   })
@@ -535,7 +535,7 @@ export const getBrands = asyncHandler(async (req, res, next) => {
   }
 
   // Get all active products with brand and brandImage
-  const products = await Product.find({ 
+  const products = await Product.find({
     isActive: true,
     brand: { $exists: true, $ne: null, $ne: '' }
   })
@@ -544,13 +544,13 @@ export const getBrands = asyncHandler(async (req, res, next) => {
 
   // Extract unique brands with their images
   const brandMap = new Map();
-  
+
   products.forEach(product => {
     const brandName = product.brand?.trim();
     if (brandName) {
       // If brand doesn't exist in map, or if current product has brandImage and map doesn't
-      if (!brandMap.has(brandName) || 
-          (product.brandImage && !brandMap.get(brandName).image)) {
+      if (!brandMap.has(brandName) ||
+        (product.brandImage && !brandMap.get(brandName).image)) {
         brandMap.set(brandName, {
           name: brandName,
           image: product.brandImage || null,
@@ -589,7 +589,7 @@ export const getTopPicks = asyncHandler(async (req, res, next) => {
   // Get active products with minimum rating and reviews
   // Top picks = products with rating >= 4.0 AND reviewsCount >= 5
   // Sorted by (rating × reviewsCount) to prioritize both quality and popularity
-  const products = await Product.find({ 
+  const products = await Product.find({
     isActive: true,
     rating: { $gte: 4.0 }, // Minimum 4.0 rating
     reviewsCount: { $gte: 5 } // Minimum 5 reviews

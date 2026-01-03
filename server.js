@@ -4,10 +4,14 @@
  */
 import app from './src/app.js';
 import { connectAllDatabases } from './src/shared/infrastructure/database/connections.js';
+import { seedAdminOnStartup } from './src/shared/utils/seedAdmin.js';
 import env from './src/shared/infrastructure/config/env.js';
 
 // Connect to databases (domain-specific: flowers database includes users)
-connectAllDatabases();
+connectAllDatabases().then(() => {
+  // Auto-seed admin user after database connection
+  seedAdminOnStartup();
+});
 
 // Start server
 const PORT = env.port || 5000;

@@ -40,7 +40,7 @@ export const createRateLimiter = ({
  * 100 requests per 15 minutes
  */
 export const apiLimiter = createRateLimiter({
-  max: 200,
+  max: 1000,
   windowMs: 15 * 60 * 1000, // 15 minutes
   errorMessage: 'Too many requests from this IP, please try again later.',
 });
