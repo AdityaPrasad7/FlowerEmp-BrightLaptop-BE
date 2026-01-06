@@ -11,6 +11,9 @@ import {
   calculateItemTotal,
   calculateOrderTotal,
 } from '../../product/services/pricing.service.js';
+import { sendEmail } from '../../../../shared/common/utils/emailService.js';
+import { sendSMS } from '../../../../shared/common/utils/smsService.js';
+import { createNotification } from '../../../../shared/common/utils/notificationService.js';
 
 /**
  * @route   POST /api/flowers/orders
@@ -20,11 +23,16 @@ import {
 export const createOrder = asyncHandler(async (req, res, next) => {
   console.log("inside create order api");
 
-  const { products, notes } = req.body;
+  const { products, notes, deliveryDate, timeSlot, shippingAddress, paymentMethod } = req.body;
 
   // Validate required fields
   if (!products || !Array.isArray(products) || products.length === 0) {
     return next(new AppError('Please provide at least one product', 400));
+  }
+
+  // Basic validation for required fields
+  if (!deliveryDate || !timeSlot || !paymentMethod) {
+    return next(new AppError('Delivery Date, Time Slot and Payment Method are required', 400));
   }
 
   // 🔒 SECURITY FIX: Derive orderType from authenticated user role, not request body
@@ -104,13 +112,68 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     status: defaultStatus,
     totalAmount,
     notes: notes || '',
+    deliveryDate,
+    timeSlot,
+    shippingAddress,
+    paymentMethod // 'COD' or others
   });
 
   // NOTE: Stock is NOT deducted here anymore because status is PENDING.
   // Stock will be deducted when Admin approves/confirms the order.
 
   // Populate product details for response
-  await order.populate('products.productId', 'name description');
+  await order.populate('products.productId', 'name description images');
+
+  // 🔔 NOTIFICATIONS: Only for COD orders (Immediate Confirmation)
+  // Online orders will trigger notification after verifyPayment (Success)
+  if (paymentMethod === 'COD') {
+    try {
+      const userPhone = req.user.phone; // Assuming phone is on user user object
+
+      // 0. Persistent Notification (In-App)
+      await createNotification(
+        req.user._id,
+        'Order Placed',
+        `Your order #${order.orderId} has been placed successfully.`,
+        'SUCCESS',
+        `/account/orders/${order._id}`
+      );
+
+      // 1. Send SMS
+      if (userPhone) {
+        await sendSMS(
+          userPhone,
+          `Hi ${req.user.name}, your order #${order.orderId} has been placed successfully! Total: ${totalAmount} KD. expected delivery: ${new Date(deliveryDate).toLocaleDateString()}`
+        );
+      }
+
+      // 2. Send Email
+      const emailHtml = `
+              <h2>Thank you for your order!</h2>
+              <p>Hi ${req.user.name},</p>
+              <p>Your order <strong>#${order.orderId}</strong> has been placed successfully.</p>
+              <h3>Order Details:</h3>
+              <ul>
+                  ${order.products.map(item => `
+                      <li>${item.productId.name} x ${item.quantity} - ${item.priceAtPurchase} KD</li>
+                  `).join('')}
+              </ul>
+              <p><strong>Total Amount: ${totalAmount} KD</strong></p>
+              <p><strong>Payment Method:</strong> Cash on Delivery</p>
+              <p><strong>Delivery Date:</strong> ${new Date(deliveryDate).toLocaleDateString()} (${timeSlot})</p>
+              <p>We will contact you shortly to confirm delivery.</p>
+          `;
+
+      await sendEmail({
+        to: req.user.email,
+        subject: `Order Confirmation #${order.orderId} - Flower Emporium`,
+        html: emailHtml
+      });
+
+    } catch (notifyError) {
+      console.error("Notification Error (Non-blocking):", notifyError.message);
+    }
+  }
 
   res.status(201).json({
     success: true,
@@ -126,11 +189,25 @@ export const createOrder = asyncHandler(async (req, res, next) => {
  * @access  Private
  */
 export const getOrders = asyncHandler(async (req, res, next) => {
-  const { status, orderType } = req.query;
+  const { status, orderType, page = 1, limit = 10, isLive } = req.query;
 
-  // Build query - users can only see their own orders
-  // Admins and sellers can see all orders (if needed, add separate endpoint)
-  const query = { userId: req.user._id };
+  let query = {};
+
+  // Check for Live Orders request (Admin/Seller only)
+  if (isLive === 'true' && (req.user.role === 'ADMIN' || req.user.role === 'SELLER')) {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    query = {
+      status: { $nin: ['DELIVERED', 'CANCELLED'] },
+      deliveryDate: { $gte: startOfToday }
+    };
+  } else {
+    // Default: Users see their own orders
+    query = { userId: req.user._id };
+  }
+
+  // Apply additional filters (if compatible)
   if (status) {
     query.status = status;
   }
@@ -138,16 +215,30 @@ export const getOrders = asyncHandler(async (req, res, next) => {
     query.orderType = orderType;
   }
 
+  // Pagination
+  const pageNum = parseInt(page, 10);
+  const limitNum = parseInt(limit, 10);
+  const skip = (pageNum - 1) * limitNum;
+
+  const total = await Order.countDocuments(query);
+
   const orders = await Order.find(query)
-    .populate('products.productId', 'name description')
-    .populate('userId', 'name email companyName')
-    .sort({ createdAt: -1 });
+    .populate('products.productId', 'name description images')
+    .populate('userId', 'name email companyName phone')
+    .sort({ deliveryDate: 1, createdAt: 1 }) // Sort by delivery date for live orders
+    .skip(skip)
+    .limit(limitNum);
 
   res.status(200).json({
     success: true,
     count: orders.length,
     data: {
       orders,
+      pagination: {
+        total,
+        page: pageNum,
+        pages: Math.ceil(total / limitNum)
+      }
     },
   });
 });
@@ -159,7 +250,7 @@ export const getOrders = asyncHandler(async (req, res, next) => {
  */
 export const getOrder = asyncHandler(async (req, res, next) => {
   const order = await Order.findById(req.params.id)
-    .populate('products.productId', 'name description basePrice')
+    .populate('products.productId', 'name description basePrice images')
     .populate('userId', 'name email companyName');
 
   if (!order) {
@@ -261,7 +352,7 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
     );
   }
 
-  const order = await Order.findById(req.params.id);
+  const order = await Order.findById(req.params.id).populate('userId', 'name email phone');
 
   if (!order) {
     return next(new AppError('Order not found', 404));
@@ -272,8 +363,84 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
     return next(new AppError('Cannot change status of cancelled order', 400));
   }
 
+  const oldStatus = order.status;
   order.status = status;
   await order.save();
+
+  // 🔔 NOTIFICATIONS: Status Updates
+  if (oldStatus !== status) {
+    try {
+      const user = order.userId;
+      if (user) {
+        let subject = `Order Update #${order.orderId}`;
+        let message = `Your order status has been updated to ${status}.`;
+        let smsMessage = `Hi ${user.name}, your order #${order.orderId} status is now: ${status}.`;
+        // In-App Notification Type
+        let type = 'INFO';
+        if (status === 'DELIVERED') type = 'SUCCESS';
+        if (status === 'CANCELLED') type = 'ERROR';
+        if (status === 'SHIPPED' || status === 'OUT_FOR_DELIVERY') type = 'WARNING'; // Or Info, depends on UI preference
+
+        // Custom Messages for specific statuses
+        switch (status) {
+          case 'SHIPPED':
+            subject = `Your Order #${order.orderId} has Shipped! 🚚`;
+            message = `Great news! Your order has been shipped and is on its way.`;
+            smsMessage = `Hi ${user.name}, good news! Your order #${order.orderId} has been shipped.`;
+            break;
+          case 'OUT_FOR_DELIVERY':
+            subject = `Order #${order.orderId} is Out for Delivery! 🌸`;
+            message = `Get ready! Your flowers are out for delivery and will arrive soon.`;
+            smsMessage = `Hi ${user.name}, your order #${order.orderId} is out for delivery today!`;
+            break;
+          case 'DELIVERED':
+            subject = `Order #${order.orderId} Delivered! ✅`;
+            message = `Your order has been successfully delivered. We hope it brings joy!`;
+            smsMessage = `Hi ${user.name}, your order #${order.orderId} has been delivered. Thank you!`;
+            break;
+          case 'CANCELLED':
+            subject = `Order #${order.orderId} Cancelled ❌`;
+            message = `Your order has been cancelled. If this was a mistake, please contact us.`;
+            smsMessage = `Hi ${user.name}, your order #${order.orderId} has been cancelled.`;
+            break;
+        }
+
+        // 0. Persistent Notification (In-App)
+        await createNotification(
+          user._id,
+          subject,
+          message,
+          type,
+          `/account/orders/${order._id}` // Clicking takes user to order details
+        );
+
+        // 1. Send SMS
+        if (user.phone) {
+          await sendSMS(user.phone, smsMessage);
+        }
+
+        // 2. Send Email
+        const emailHtml = `
+                  <h2>Status Update</h2>
+                  <p>Hi ${user.name},</p>
+                  <p>${message}</p>
+                  <h3>Order Details:</h3>
+                  <p><strong>Order ID:</strong> #${order.orderId}</p>
+                  <p><strong>New Status:</strong> ${status}</p>
+                  <br>
+                  <p>Track your order or view details on our website.</p>
+              `;
+
+        await sendEmail({
+          to: user.email,
+          subject: subject,
+          html: emailHtml
+        });
+      }
+    } catch (notifyError) {
+      console.error("Status Update Notification Error:", notifyError.message);
+    }
+  }
 
   res.status(200).json({
     success: true,

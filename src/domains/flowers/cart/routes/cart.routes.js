@@ -8,6 +8,8 @@ import {
   updateCartItem,
   removeFromCart,
   clearCart,
+  getAbandonedCarts,
+  sendRecoveryEmail,
 } from '../controllers/cart.controller.js';
 import { checkout } from '../../checkout/controllers/checkout.controller.js';
 import { protect } from '../../../../shared/common/middlewares/auth.middleware.js';
@@ -33,6 +35,8 @@ const updateCartItemSchema = z.object({
 });
 
 // Cart routes
+router.get('/abandoned', getAbandonedCarts); // Admin only
+router.post('/recover/:cartId', sendRecoveryEmail); // Admin only
 router.post('/add', validate(addToCartSchema), addToCart);
 router.get('/', getCart);
 router.put('/update', validate(updateCartItemSchema), updateCartItem);

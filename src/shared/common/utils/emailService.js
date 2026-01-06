@@ -58,7 +58,7 @@ export const sendEmail = async ({ to, subject, html, text }) => {
     return info;
   } catch (error) {
     console.error('Error sending email:', error);
-    
+
     // Provide more detailed error messages
     if (error.code === 'EAUTH') {
       throw new Error('Email authentication failed. Please check EMAIL_USER and EMAIL_PASSWORD in .env file.');
@@ -83,10 +83,10 @@ export const sendEmail = async ({ to, subject, html, text }) => {
  */
 export const sendContactFormEmail = async (contactData) => {
   const { name, email, phone, message } = contactData;
-  const currentDate = new Date().toLocaleString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
+  const currentDate = new Date().toLocaleString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit'

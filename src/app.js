@@ -32,6 +32,9 @@ import flowersUserRoutes from './domains/flowers/user/routes/user.routes.js';
 // import flowersUserRoutes from './domains/flowers/user/routes/user.routes.js';
 import flowersPaymentRoutes from './domains/flowers/payment/routes/payment.routes.js';
 import flowersOccasionRoutes from './domains/flowers/occasion/routes/occasion.routes.js';
+import flowersReviewRoutes from './domains/flowers/reviews/routes/review.routes.js';
+import flowersNotificationRoutes from './domains/flowers/notification/routes/notification.routes.js';
+import flowersBannerRoutes from './domains/flowers/banner/routes/banner.routes.js';
 
 const app = express();
 
@@ -101,6 +104,9 @@ app.use('/api/flowers/upload', flowersUploadRoutes);
 app.use('/api/flowers/users', flowersUserRoutes);
 app.use('/api/flowers/payment', flowersPaymentRoutes);
 app.use('/api/flowers/occasions', flowersOccasionRoutes);
+app.use('/api/flowers/reviews', flowersReviewRoutes);
+app.use('/api/flowers/notifications', flowersNotificationRoutes);
+app.use('/api/flowers/banners', flowersBannerRoutes);
 
 // Laptops domain routes
 app.use('/api/laptops/auth', laptopsAuthRoutes);

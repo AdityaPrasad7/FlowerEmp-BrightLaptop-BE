@@ -21,6 +21,7 @@ export const checkout = asyncHandler(async (req, res, next) => {
     notes,
     deliveryDate,
     timeSlot,
+    deliveryCharge, // Destructure deliveryCharge
   } = req.body;
 
   // Get user's cart
@@ -78,7 +79,12 @@ export const checkout = asyncHandler(async (req, res, next) => {
   }
 
   // Calculate total amount
-  const totalAmount = calculateOrderTotal(orderItems);
+  let totalAmount = calculateOrderTotal(orderItems);
+
+  // Add delivery charge if present
+  if (deliveryCharge) {
+    totalAmount += Number(deliveryCharge);
+  }
 
   // Determine status based on payment method
   // B2B is always PENDING until approved by admin
@@ -106,6 +112,7 @@ export const checkout = asyncHandler(async (req, res, next) => {
     notes: notes || '',
     deliveryDate,
     timeSlot,
+    deliveryCharge: Number(deliveryCharge) || 0,
   });
 
   // Update product stock ONLY if order is immediately APPROVED (e.g. COD)
@@ -117,10 +124,12 @@ export const checkout = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // Clear cart after successful checkout
-  cart.items = [];
-  cart.totalAmount = 0;
-  await cart.save();
+  // Clear cart only for COD (Online payments clear upon success callback)
+  if (paymentMethod === 'COD') {
+    cart.items = [];
+    cart.totalAmount = 0;
+    await cart.save();
+  }
 
   // Populate product details for response
   await order.populate('products.productId', 'name description');

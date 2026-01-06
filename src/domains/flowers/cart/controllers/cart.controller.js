@@ -4,7 +4,13 @@
  */
 import Cart from '../models/Cart.model.js';
 import Product from '../../product/models/Product.model.js';
-import { AppError, asyncHandler } from '../../../../shared/common/utils/errorHandler.js';
+import {
+  AppError,
+  asyncHandler
+} from '../../../../shared/common/utils/errorHandler.js';
+import {
+  broadcastEvent
+} from '../../../../shared/common/utils/socketService.js';
 import { calculateUnitPrice, calculateItemTotal } from '../../product/services/pricing.service.js';
 
 /**
@@ -342,6 +348,7 @@ export const clearCart = asyncHandler(async (req, res, next) => {
   cart.items = [];
   cart.totalAmount = 0;
   await cart.save();
+  broadcastEvent('cart_updated', { cartId: cart._id });
 
   res.status(200).json({
     success: true,
@@ -352,4 +359,119 @@ export const clearCart = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * @route   GET /api/flowers/cart/abandoned
+ * @desc    Get abandoned carts (Admin only)
+ * @access  Private (Admin only)
+ */
+export const getAbandonedCarts = asyncHandler(async (req, res, next) => {
+  // Define "Abandoned" as not updated in the last 2 hours
+  const twoHoursAgo = new Date(Date.now() - 1 * 60 * 1000);
+  // const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
 
+  const abandonedCarts = await Cart.find({
+    updatedAt: { $lt: twoHoursAgo },
+    'items.0': { $exists: true } // Check if items array is not empty
+  })
+    .populate('userId', 'name email phone')
+    .populate('items.productId', 'name basePrice images')
+    .sort({ updatedAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    count: abandonedCarts.length,
+    data: {
+      carts: abandonedCarts,
+    },
+  });
+});
+
+/**
+ * @route   POST /api/flowers/cart/recover/:cartId
+ * @desc    Send recovery email to user
+ * @access  Private (Admin only)
+ */
+export const sendRecoveryEmail = asyncHandler(async (req, res, next) => {
+  const { cartId } = req.params;
+
+  const cart = await Cart.findById(cartId)
+    .populate('userId', 'name email phone')
+    .populate('items.productId', 'name basePrice images');
+
+  if (!cart) {
+    return next(new AppError('Cart not found', 404));
+  }
+
+  if (!cart.userId || !cart.userId.email) {
+    return next(new AppError('User email not found', 400));
+  }
+
+  const user = cart.userId;
+  const { sendEmail } = await import('../../../../shared/common/utils/emailService.js');
+
+  const productRows = cart.items.map(item => `
+    <tr>
+      <td style="padding: 10px; border-bottom: 1px solid #eee;">
+        <img src="${item.productId.images?.[0] || 'https://placehold.co/40x40'}" alt="${item.productId.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+      </td>
+      <td style="padding: 10px; border-bottom: 1px solid #eee;">
+        <strong>${item.productId.name}</strong>
+      </td>
+      <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">
+        ${item.quantity}
+      </td>
+      <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">
+        ${item.totalPrice.toFixed(3)} KD
+      </td>
+    </tr>
+  `).join('');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+      <h2 style="color: #E11D48;">You left something behind! 🌸</h2>
+      <p>Hi ${user.name},</p>
+      <p>We noticed you left some beautiful items in your cart. They are saved and waiting for you!</p>
+      
+      <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+        <thead>
+          <tr style="background-color: #f8f9fa;">
+            <th style="padding: 10px; text-align: left;">Image</th>
+            <th style="padding: 10px; text-align: left;">Product</th>
+            <th style="padding: 10px; text-align: center;">Qty</th>
+            <th style="padding: 10px; text-align: right;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${productRows}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" style="padding: 15px; text-align: right; font-weight: bold;">Total:</td>
+            <td style="padding: 15px; text-align: right; font-weight: bold; color: #E11D48;">${cart.totalAmount.toFixed(3)} KD</td>
+          </tr>
+        </tfoot>
+      </table>
+  
+      
+      <p style="margin-top: 30px; font-size: 12px; color: #888;">If you have any questions, reply to this email.</p>
+    </div>
+  `;
+
+
+  // href="http://localhost:5174/cart"
+
+  // <div style="text-align: center; margin-top: 30px;">
+  //   <a  href=# style="background-color: #E11D48; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Complete Your Purchase</a>
+  // </div>
+
+  await sendEmail({
+    to: user.email,
+    subject: 'Complete your purchase at Flower Emporium',
+    html,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'Recovery email sent successfully',
+  });
+});

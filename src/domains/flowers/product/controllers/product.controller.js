@@ -98,7 +98,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
  * @access  Public
  */
 export const getProducts = asyncHandler(async (req, res, next) => {
-  const { sellerId, isActive, category } = req.query;
+  const { sellerId, isActive, category, search } = req.query;
 
   // Build query
   const query = {};
@@ -115,6 +115,15 @@ export const getProducts = asyncHandler(async (req, res, next) => {
   // Filter by category (Case-insensitive)
   if (category) {
     query.category = { $regex: new RegExp('^' + category.trim() + '$', 'i') };
+  }
+
+  // Search by name or description
+  if (search) {
+    const searchRegex = new RegExp(search.trim(), 'i');
+    query.$or = [
+      { name: { $regex: searchRegex } },
+      { description: { $regex: searchRegex } }
+    ];
   }
 
   // Filter by Flower Attributes (Case-insensitive)

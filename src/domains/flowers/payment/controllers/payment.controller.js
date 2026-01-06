@@ -13,6 +13,10 @@ import { AppError } from '../../../../shared/common/utils/errorHandler.js';
 export const getPaymentMethods = async (req, res, next) => {
     try {
         const { url, token } = env.myFatoorah;
+        console.log("url", url);
+        console.log("token", token);
+
+
 
         // We are using InitiatePayment as used in the source implementation
         const response = await axios.post(`${url}/v2/InitiatePayment`, {
@@ -27,6 +31,8 @@ export const getPaymentMethods = async (req, res, next) => {
 
         res.status(200).json(response.data);
     } catch (error) {
+        console.log("error", error);
+
         next(error);
     }
 };
@@ -107,8 +113,9 @@ export const verifyPayment = async (req, res, next) => {
         }
 
         // 3. Find Order
+        // 3. Find Order
         const Order = (await import('../../order/models/Order.model.js')).default;
-        const order = await Order.findById(orderId);
+        const order = await Order.findById(orderId).populate('userId', 'name email phone'); // Populate user details
 
         if (!order) {
             return next(new AppError('Order not found', 404));
@@ -126,13 +133,28 @@ export const verifyPayment = async (req, res, next) => {
         // 5. Create Transaction Record
         const Transaction = (await import('../models/Transaction.model.js')).default;
 
+        // Define services inside (dynamic import or moved import)
+        // Since we are inside a function and this file uses top-level imports, we should add imports at top of file.
+        // But for this patch, I will use the imports provided in the top of the file if I added them. 
+        // Wait, replace_file_content replaces chunk. I should add imports at top first? 
+        // Or if I can't see the top, I can assume I need to add them.
+        // Actually, the previous view_file showed I need to add imports to payment.controller.js as well.
+        // I'll assume I can add them in a separate call or just rely on existing if available. 
+        // But they are NOT available. I need to add imports. this tool only replaces a chunk.
+        // I will just add the logic here and use dynamic imports for services if needed or hope I can update imports later.
+        // BETTER: I will use dynamic imports for services here to avoid touching the top of file and messing up lines.
+
+        const { sendEmail } = await import('../../../../shared/common/utils/emailService.js');
+        const { sendSMS } = await import('../../../../shared/common/utils/smsService.js');
+        const { createNotification } = await import('../../../../shared/common/utils/notificationService.js');
+
         // Check idempotent
         let transaction = await Transaction.findOne({ paymentId });
 
         if (!transaction) {
             transaction = await Transaction.create({
                 orderId: order._id,
-                userId: order.userId,
+                userId: order.userId._id, // order.userId is now an object due to populate
                 paymentMethod: paymentData.PaymentMethod || order.paymentMethod,
                 amount: paymentData.InvoiceValue,
                 currency: paymentData.InvoiceTransactions?.[0]?.Currency || 'KWD',
@@ -171,6 +193,47 @@ export const verifyPayment = async (req, res, next) => {
                     await Product.findByIdAndUpdate(item.productId, {
                         $inc: { stock: -item.quantity },
                     });
+                }
+
+                // 🔔 NOTIFICATIONS: Payment Success
+                try {
+                    const user = order.userId; // Populated above
+
+                    // 0. Persistent Notification (In-App)
+                    await createNotification(
+                        user._id,
+                        'Payment Successful',
+                        `Payment of ${transaction.amount} KD received for Order #${order.orderId}.`,
+                        'SUCCESS',
+                        `/account/orders/${order._id}`
+                    );
+
+                    // 1. Send SMS
+                    if (user.phone) {
+                        await sendSMS(
+                            user.phone,
+                            `Hi ${user.name}, your order #${order.orderId} is confirmed! Payment received: ${transaction.amount} KD. We will deliver appropriately.`
+                        );
+                    }
+
+                    // 2. Send Email
+                    const emailHtml = `
+                          <h2>Payment Successful!</h2>
+                          <p>Hi ${user.name},</p>
+                          <p>Your payment for order <strong>#${order.orderId}</strong> was successful.</p>
+                          <p><strong>Transaction ID:</strong> ${transaction.transactionId}</p>
+                          <p><strong>Amount Paid:</strong> ${transaction.amount} KD</p>
+                          <p>We are preparing your flowers now!</p>
+                      `;
+
+                    await sendEmail({
+                        to: user.email,
+                        subject: `Payment Receipt & Order Confirmation #${order.orderId} - Flower Emporium`,
+                        html: emailHtml
+                    });
+
+                } catch (notifyError) {
+                    console.error("Payment Notification Error:", notifyError.message);
                 }
             }
 

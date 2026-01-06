@@ -141,6 +141,11 @@ const orderSchema = new mongoose.Schema(
       enum: ['PENDING', 'PAID', 'FAILED', 'REFUNDED'],
       default: 'PENDING',
     },
+    deliveryCharge: {
+      type: Number,
+      default: 0,
+      min: [0, 'Delivery charge cannot be negative'],
+    },
     // Special Instructions/Notes
     notes: {
       type: String,
