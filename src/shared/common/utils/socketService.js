@@ -11,18 +11,23 @@ export const initSocket = (httpServer) => {
     });
 
     io.on('connection', (socket) => {
-        console.log('User connected', socket.id);
+        console.log('Backend: User connected to socket', socket.id);
 
         // Join a room based on userId if provided (client should emit 'join')
         socket.on('join', (userId) => {
             if (userId) {
+                console.log(`Backend: Socket ${socket.id} joining room ${userId}`);
                 socket.join(userId);
-                console.log(`Socket ${socket.id} joined room ${userId}`);
+                // Verify join
+                const rooms = Array.from(socket.rooms);
+                console.log(`Backend: Socket ${socket.id} rooms:`, rooms);
+            } else {
+                console.warn('Backend: Socket attempted join without userId');
             }
         });
 
         socket.on('disconnect', () => {
-            console.log('User disconnected', socket.id);
+            console.log('Backend: User disconnected', socket.id);
         });
     });
 
@@ -37,7 +42,11 @@ export const getIO = () => {
 };
 
 export const emitNotification = (userId, notification) => {
-    if (!io) return;
+    if (!io) {
+        console.error("Backend Error: IO not initialized during emitNotification");
+        return;
+    }
+    console.log(`Backend: Emitting 'notification' to room ${userId}`, notification.title);
     io.to(userId).emit('notification', notification);
 };
 

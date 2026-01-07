@@ -53,6 +53,10 @@ const cartSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Total amount cannot be negative'],
     },
+    adminNotified: {
+      type: Boolean,
+      default: false,
+    }
   },
   {
     timestamps: true,

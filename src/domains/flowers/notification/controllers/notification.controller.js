@@ -87,3 +87,24 @@ export const getUnreadCount = asyncHandler(async (req, res, next) => {
         data: { count }
     });
 });
+// ... existing code ...
+
+/**
+ * @route   POST /api/notifications/test
+ * @desc    Trigger a test notification to admins
+ * @access  Private (Admin only)
+ */
+export const testNotification = asyncHandler(async (req, res, next) => {
+    const { notifyAdmins } = await import('../../../../shared/common/utils/notificationService.js');
+
+    await notifyAdmins(
+        'Test Notification 🔔',
+        `This is a test notification trigger by ${req.user.name}.`,
+        'INFO'
+    );
+
+    res.status(200).json({
+        success: true,
+        message: 'Test notification sent to admins'
+    });
+});

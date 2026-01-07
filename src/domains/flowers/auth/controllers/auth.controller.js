@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.model.js';
 import { AppError, asyncHandler } from '../../../../shared/common/utils/errorHandler.js';
 import env from '../../../../shared/infrastructure/config/env.js';
+import { notifyAdmins } from '../../../../shared/common/utils/notificationService.js';
 
 /**
  * Generate JWT token
@@ -60,6 +61,14 @@ export const register = asyncHandler(async (req, res, next) => {
 
   // Generate token
   const token = generateToken(user._id);
+
+  // Notify admins
+  await notifyAdmins(
+    'New Customer Registered',
+    `${name} has joined Flower Emporium.`,
+    'INFO',
+    `/customers`
+  );
 
   res.status(201).json({
     success: true,
@@ -124,6 +133,32 @@ export const login = asyncHandler(async (req, res, next) => {
  */
 export const getMe = asyncHandler(async (req, res, next) => {
   const user = await User.findById(req.user._id);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      user,
+    },
+  });
+});
+
+/**
+ * @route   PUT /api/auth/update-details
+ * @desc    Update user details
+ * @access  Private
+ */
+export const updateDetails = asyncHandler(async (req, res, next) => {
+  const fieldsToUpdate = {
+    name: req.body.name,
+    email: req.body.email,
+    phone: req.body.phone,
+    companyName: req.body.companyName,
+  };
+
+  const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
+    new: true,
+    runValidators: true,
+  });
 
   res.status(200).json({
     success: true,

@@ -122,6 +122,7 @@ export const addToCart = asyncHandler(async (req, res, next) => {
 
   // Recalculate cart total
   cart.calculateTotal();
+  cart.adminNotified = false;
   await cart.save();
 
   // Populate product details

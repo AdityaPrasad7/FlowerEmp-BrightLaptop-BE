@@ -27,6 +27,10 @@ const server = app.listen(PORT, () => {
 import { initSocket } from './src/shared/common/utils/socketService.js';
 initSocket(server);
 
+// Initialize Schedulers
+import { startAbandonedCartScheduler } from './src/shared/common/schedulers/abandonedCartScheduler.js';
+startAbandonedCartScheduler();
+
 // INCREASE TIMEOUT for slow uploads (5 minutes)
 server.timeout = 300000;
 server.keepAliveTimeout = 300000;

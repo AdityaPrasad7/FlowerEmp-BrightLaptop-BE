@@ -35,6 +35,7 @@ import flowersOccasionRoutes from './domains/flowers/occasion/routes/occasion.ro
 import flowersReviewRoutes from './domains/flowers/reviews/routes/review.routes.js';
 import flowersNotificationRoutes from './domains/flowers/notification/routes/notification.routes.js';
 import flowersBannerRoutes from './domains/flowers/banner/routes/banner.routes.js';
+import flowersTestimonialRoutes from './domains/flowers/testimonial/routes/testimonial.routes.js';
 
 const app = express();
 
@@ -44,11 +45,17 @@ app.use(helmet());
 
 // CORS configuration
 // Allow multiple origins for development (Vite runs on 5173, React on 3000)
+// Support comma-separated origins from CORS_ORIGIN environment variable
+const corsOrigin = env.cors.origin || '*';
+const corsOriginsList = corsOrigin === '*' 
+  ? ['*'] 
+  : corsOrigin.split(',').map(origin => origin.trim()).filter(Boolean);
+
 const allowedOrigins = [
   'http://localhost:5173', // Vite default port
   'http://localhost:3000', // React default port
   'http://localhost:5174', // Vite alternative port
-  env.cors.origin,
+  ...corsOriginsList, // Add all origins from CORS_ORIGIN
 ].filter(Boolean); // Remove undefined values
 
 app.use(cors({
@@ -56,8 +63,8 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    // Check if origin is in allowed list
-    if (allowedOrigins.includes(origin) || env.cors.origin === '*') {
+    // Check if origin is in allowed list or if '*' is set
+    if (corsOrigin === '*' || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       // In development, allow any localhost origin
@@ -107,6 +114,7 @@ app.use('/api/flowers/occasions', flowersOccasionRoutes);
 app.use('/api/flowers/reviews', flowersReviewRoutes);
 app.use('/api/flowers/notifications', flowersNotificationRoutes);
 app.use('/api/flowers/banners', flowersBannerRoutes);
+app.use('/api/flowers/testimonials', flowersTestimonialRoutes);
 
 // Laptops domain routes
 app.use('/api/laptops/auth', laptopsAuthRoutes);

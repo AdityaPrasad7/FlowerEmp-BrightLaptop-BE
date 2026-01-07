@@ -8,6 +8,7 @@ import {
   getMe,
   logout,
   addAddress,
+  updateDetails,
 } from '../controllers/auth.controller.js';
 import { protect } from '../../../../shared/common/middlewares/auth.middleware.js';
 import { authLimiter, registerLimiter } from '../../../../shared/common/middlewares/rateLimiter.middleware.js';
@@ -27,6 +28,7 @@ router.post('/login-with-otp', authLimiter, (await import('../controllers/auth.c
 // Protected routes
 router.get('/me', protect, getMe);
 router.post('/address', protect, addAddress);
+router.put('/update-details', protect, updateDetails);
 router.post('/logout', logout);
 
 export default router;

@@ -12,7 +12,9 @@ import { uploadImage, deleteImage } from '../../../../shared/common/utils/cloudi
  * @access  Private (Admin only)
  */
 export const createBanner = asyncHandler(async (req, res, next) => {
-    const { title, subtitle, type, link, color, order, isActive } = req.body;
+    const { title, subtitle, type, subtype, link, color, order, isActive } = req.body;
+    // console.log("isActive", isActive);
+
 
     if (!req.file) {
         return next(new AppError('Please upload an image', 400));
@@ -26,10 +28,11 @@ export const createBanner = asyncHandler(async (req, res, next) => {
         subtitle,
         image: result.secure_url,
         type,
+        subtype: subtype || 'flower',
         link,
         color,
         order: Number(order) || 0,
-        isActive: isActive === 'true' || isActive === true,
+        // isActive: isActive === 'true' || isActive === true,
     });
 
     res.status(201).json({
@@ -48,6 +51,7 @@ export const createBanner = asyncHandler(async (req, res, next) => {
  */
 export const getBanners = asyncHandler(async (req, res, next) => {
     const { type, activeOnly } = req.query;
+    console.log("inside get banners");
 
     const query = {};
 

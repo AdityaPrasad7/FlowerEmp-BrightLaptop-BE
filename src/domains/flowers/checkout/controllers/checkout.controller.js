@@ -7,6 +7,7 @@ import Order from '../../order/models/Order.model.js';
 import Product from '../../product/models/Product.model.js';
 import { AppError, asyncHandler } from '../../../../shared/common/utils/errorHandler.js';
 import { calculateOrderTotal } from '../../product/services/pricing.service.js';
+import { notifyAdmins } from '../../../../shared/common/utils/notificationService.js';
 
 /**
  * @route   POST /api/flowers/cart/checkout
@@ -133,6 +134,14 @@ export const checkout = asyncHandler(async (req, res, next) => {
 
   // Populate product details for response
   await order.populate('products.productId', 'name description');
+
+  // Notify admins
+  await notifyAdmins(
+    'New Order Placed',
+    `Order #${order._id.toString().slice(-6).toUpperCase()} placed by ${req.user.name}`,
+    'SUCCESS',
+    `/orders/${order._id}`
+  );
 
   res.status(201).json({
     success: true,

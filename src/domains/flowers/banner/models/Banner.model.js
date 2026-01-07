@@ -27,6 +27,12 @@ const bannerSchema = new mongoose.Schema(
             default: 'HOME HERO',
             uppercase: true,
         },
+        subtype: {
+            type: String,
+            enum: ['flower', 'cake', 'chocolate', 'discount', 'other'],
+            default: 'flower',
+            lowercase: true,
+        },
         link: {
             type: String,
             default: '',

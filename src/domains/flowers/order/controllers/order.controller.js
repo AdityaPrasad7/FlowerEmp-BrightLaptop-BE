@@ -6,6 +6,7 @@ import Order from '../models/Order.model.js';
 import Product from '../../product/models/Product.model.js';
 import User from '../../auth/models/User.model.js';
 import { AppError, asyncHandler } from '../../../../shared/common/utils/errorHandler.js';
+import { notifyAdmins } from '../../../../shared/common/utils/notificationService.js';
 import {
   calculateUnitPrice,
   calculateItemTotal,
@@ -174,6 +175,14 @@ export const createOrder = asyncHandler(async (req, res, next) => {
       console.error("Notification Error (Non-blocking):", notifyError.message);
     }
   }
+
+  // Notify admins
+  await notifyAdmins(
+    'New Order Placed',
+    `Order #${order._id.toString().slice(-6)} placed by ${req.user.name}`,
+    'SUCCESS',
+    `/orders/${order._id}`
+  );
 
   res.status(201).json({
     success: true,
