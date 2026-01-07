@@ -1,6 +1,6 @@
 /**
  * Cart Model (Flowers Domain)
- * Shopping cart for users before checkout
+ * Shopping cart for users before checkout...
  */
 import mongoose from 'mongoose';
 

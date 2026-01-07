@@ -7,7 +7,7 @@ import User from '../models/User.model.js';
 import { AppError, asyncHandler } from '../../../../shared/common/utils/errorHandler.js';
 import env from '../../../../shared/infrastructure/config/env.js';
 import { notifyAdmins } from '../../../../shared/common/utils/notificationService.js';
-
+//
 /**
  * Generate JWT token
  * @param {string} userId - User ID

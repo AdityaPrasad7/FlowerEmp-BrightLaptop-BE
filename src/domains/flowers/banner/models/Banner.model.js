@@ -1,6 +1,6 @@
 /**
  * Banner Model (Flowers Domain)
- * Stores marketing banners and offers
+ * Stores marketing banners and offers....
  */
 import mongoose from 'mongoose';
 import { getConnection, isConnected } from '../../../../shared/infrastructure/database/connections.js';

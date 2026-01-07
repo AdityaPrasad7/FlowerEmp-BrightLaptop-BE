@@ -1,6 +1,6 @@
 import Notification from '../models/Notification.model.js';
 import { AppError, asyncHandler } from '../../../../shared/common/utils/errorHandler.js';
-
+/////
 /**
  * @route   GET /api/notifications
  * @desc    Get user's notifications

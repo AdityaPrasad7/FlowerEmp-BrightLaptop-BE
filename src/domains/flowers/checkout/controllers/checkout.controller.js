@@ -1,5 +1,5 @@
 /**
- * Checkout Controller (Flowers Domain)
+ * Checkout Controller (Flowers Domain)...
  * Handles checkout process - converts cart to order
  */
 import Cart from '../../cart/models/Cart.model.js';

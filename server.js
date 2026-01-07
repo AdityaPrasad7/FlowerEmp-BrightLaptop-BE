@@ -2,6 +2,7 @@
  * Server Entry Point
  * Initializes database connection and starts the Express server
  */
+//
 import app from './src/app.js';
 import { connectAllDatabases } from './src/shared/infrastructure/database/connections.js';
 import { seedAdminOnStartup } from './src/shared/utils/seedAdmin.js';

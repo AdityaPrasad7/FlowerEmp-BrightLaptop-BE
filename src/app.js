@@ -45,7 +45,7 @@ app.use(helmet());
 
 // CORS configuration
 // Allow multiple origins for development (Vite runs on 5173, React on 3000)
-// Support comma-separated origins from CORS_ORIGIN environment variable
+
 const corsOrigin = env.cors.origin || '*';
 const corsOriginsList = corsOrigin === '*' 
   ? ['*'] 
