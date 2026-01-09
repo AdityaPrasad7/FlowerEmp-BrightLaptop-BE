@@ -11,6 +11,10 @@ import {
   calculateUnitPrice,
   calculateOrderTotal,
 } from '../../product/services/pricing.service.js';
+import {
+  generateAndSaveInvoiceNumber,
+  formatInvoiceData,
+} from '../../../../shared/common/utils/invoice.service.js';
 
 /**
  * @route   POST /api/laptops/orders
@@ -321,3 +325,115 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * @route   PUT /api/laptops/orders/:id/payment-status
+ * @desc    Update payment status and generate invoice if paid (Seller/Admin only)
+ * @access  Private (Seller/Admin only)
+ */
+export const updatePaymentStatus = asyncHandler(async (req, res, next) => {
+  const { paymentStatus } = req.body;
+  const validStatuses = ['PENDING', 'PAID', 'FAILED', 'REFUNDED'];
+
+  if (!paymentStatus || !validStatuses.includes(paymentStatus)) {
+    return next(
+      new AppError(
+        `Invalid payment status. Must be one of: ${validStatuses.join(', ')}`,
+        400
+      )
+    );
+  }
+
+  const order = await Order.findById(req.params.id)
+    .populate('products.productId', 'name description images brand specifications')
+    .populate('userId', 'name email companyName');
+
+  if (!order) {
+    return next(new AppError('Order not found', 404));
+  }
+
+  const oldPaymentStatus = order.paymentStatus;
+  order.paymentStatus = paymentStatus;
+
+  // Generate invoice number when payment status changes to PAID
+  if (paymentStatus === 'PAID' && oldPaymentStatus !== 'PAID') {
+    try {
+      await generateAndSaveInvoiceNumber(order);
+    } catch (error) {
+      console.error('Error generating invoice number:', error);
+      // Continue with payment status update even if invoice generation fails
+    }
+  }
+
+  await order.save();
+
+  res.status(200).json({
+    success: true,
+    data: {
+      order,
+    },
+    message: paymentStatus === 'PAID' && !oldPaymentStatus 
+      ? 'Payment status updated and invoice generated successfully'
+      : 'Payment status updated successfully',
+  });
+});
+
+/**
+ * @route   GET /api/laptops/orders/:id/invoice
+ * @desc    Get invoice data for an order
+ * @access  Private
+ */
+export const getInvoice = asyncHandler(async (req, res, next) => {
+  const order = await Order.findById(req.params.id)
+    .populate('products.productId', 'name description images brand specifications')
+    .populate('userId', 'name email companyName gstNumber businessAddress');
+
+  if (!order) {
+    return next(new AppError('Order not found', 404));
+  }
+
+  // Check authorization
+  const orderUserId = order.userId._id ? order.userId._id.toString() : order.userId.toString();
+  if (
+    orderUserId !== req.user._id.toString() &&
+    req.user.role !== 'ADMIN' &&
+    req.user.role !== 'SELLER'
+  ) {
+    return next(new AppError('Not authorized to view this invoice', 403));
+  }
+
+  // Check if order is paid
+  if (order.paymentStatus !== 'PAID') {
+    return next(new AppError('Invoice can only be generated for paid orders', 400));
+  }
+
+  // Generate invoice number if it doesn't exist
+  if (!order.invoiceNumber) {
+    try {
+      await generateAndSaveInvoiceNumber(order);
+      // Refresh order data
+      await order.populate('products.productId', 'name description images brand specifications');
+      await order.populate('userId', 'name email companyName gstNumber businessAddress');
+    } catch (error) {
+      console.error('Error generating invoice number:', error);
+      return next(new AppError('Failed to generate invoice number', 500));
+    }
+  }
+
+  // Format invoice data
+  const invoiceData = formatInvoiceData(order, order.userId);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      invoice: invoiceData,
+      order: {
+        _id: order._id,
+        orderType: order.orderType,
+        status: order.status,
+        paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus,
+        createdAt: order.createdAt,
+      },
+    },
+  });
+});

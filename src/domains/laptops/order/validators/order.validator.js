@@ -69,3 +69,18 @@ export const updateOrderStatusSchema = Joi.object({
   }),
 });
 
+/**
+ * Payment status enum
+ */
+const paymentStatusEnum = Joi.string().valid('PENDING', 'PAID', 'FAILED', 'REFUNDED').messages({
+  'any.only': 'Payment status must be one of: PENDING, PAID, FAILED, REFUNDED',
+});
+
+/**
+ * Update payment status validation schema
+ */
+export const updatePaymentStatusSchema = Joi.object({
+  paymentStatus: paymentStatusEnum.required().messages({
+    'any.required': 'Payment status is required',
+  }),
+});

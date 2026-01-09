@@ -173,6 +173,17 @@ const orderSchema = new mongoose.Schema(
       maxlength: [500, 'Notes cannot exceed 500 characters'],
       default: '',
     },
+    // Invoice Information
+    invoiceNumber: {
+      type: String,
+      trim: true,
+      unique: true,
+      sparse: true, // Allows null values but ensures uniqueness when present
+    },
+    invoiceGeneratedAt: {
+      type: Date,
+      required: false,
+    },
   },
   {
     timestamps: true,
