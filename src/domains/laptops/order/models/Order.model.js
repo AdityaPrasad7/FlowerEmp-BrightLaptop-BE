@@ -147,7 +147,7 @@ const orderSchema = new mongoose.Schema(
     // Payment Information
     paymentMethod: {
       type: String,
-      enum: ['COD', 'CREDIT_CARD', 'DEBIT_CARD', 'UPI', 'NET_BANKING', 'WALLET', 'OTHER'],
+      enum: ['COD', 'CREDIT_CARD', 'DEBIT_CARD', 'UPI', 'NET_BANKING', 'WALLET', 'OTHER', 'ONLINE', 'RAZORPAY'],
       required: [true, 'Payment method is required'],
     },
     paymentStatus: {

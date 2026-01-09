@@ -20,6 +20,11 @@ requiredEnvVars.forEach((varName) => {
   }
 });
 
+console.log('--- ENV DEBUG ---');
+console.log('Cloud Name loaded:', !!process.env.CLOUDINARY_CLOUD_NAME, process.env.CLOUDINARY_CLOUD_NAME);
+console.log('API Key loaded:', !!process.env.CLOUDINARY_API_KEY);
+console.log('-----------------');
+
 export default {
   port: process.env.PORT || 5000,
   nodeEnv: process.env.NODE_ENV || 'development',
@@ -59,5 +64,8 @@ export default {
     authToken: process.env.TWILIO_AUTH_TOKEN,
     phoneNumber: process.env.TWILIO_PHONE_NUMBER,
   },
+  razorpay: {
+    keyId: process.env.RAZORPAY_KEY_ID,
+    keySecret: process.env.RAZORPAY_KEY_SECRET,
+  },
 };
-

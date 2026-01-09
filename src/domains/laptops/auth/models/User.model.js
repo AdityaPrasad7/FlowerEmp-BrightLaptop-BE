@@ -80,6 +80,21 @@ const userSchema = new mongoose.Schema(
         message: 'Business address is required for B2B buyers',
       },
     },
+    addresses: [
+      {
+        fullName: { type: String, required: true },
+        phone: { type: String, required: true },
+        addressLine1: { type: String, required: true },
+        addressLine2: { type: String },
+        city: { type: String, required: true },
+        state: { type: String, required: true },
+        pincode: { type: String, required: true },
+        country: { type: String, required: true },
+        details: { type: String }, // Additional details like "Near park"
+        isDefault: { type: Boolean, default: false },
+        addressType: { type: String, enum: ['Home', 'Work', 'Other'], default: 'Home' },
+      }
+    ],
     isVerified: {
       type: Boolean,
       default: false,
@@ -169,7 +184,7 @@ const getUserModel = () => {
 };
 
 // Export a Proxy that lazily initializes the model on first access
-export default new Proxy(function() {}, {
+export default new Proxy(function () { }, {
   // Handle constructor calls: new User()
   construct(target, args) {
     return new (getUserModel())(...args);

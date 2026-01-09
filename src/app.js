@@ -15,6 +15,14 @@ import flowersProductRoutes from './domains/flowers/product/routes/product.route
 import flowersOrderRoutes from './domains/flowers/order/routes/order.routes.js';
 import flowersCartRoutes from './domains/flowers/cart/routes/cart.routes.js';
 import flowersCategoryRoutes from './domains/flowers/category/routes/category.routes.js';
+import flowersUploadRoutes from './domains/flowers/upload/routes/upload.routes.js';
+import flowersUserRoutes from './domains/flowers/user/routes/user.routes.js';
+import flowersPaymentRoutes from './domains/flowers/payment/routes/payment.routes.js';
+import flowersOccasionRoutes from './domains/flowers/occasion/routes/occasion.routes.js';
+import flowersReviewRoutes from './domains/flowers/reviews/routes/review.routes.js';
+import flowersNotificationRoutes from './domains/flowers/notification/routes/notification.routes.js';
+import flowersBannerRoutes from './domains/flowers/banner/routes/banner.routes.js';
+import flowersTestimonialRoutes from './domains/flowers/testimonial/routes/testimonial.routes.js';
 
 // Import laptops domain routes (including auth)
 import laptopsAuthRoutes from './domains/laptops/auth/routes/auth.routes.js';
@@ -24,18 +32,15 @@ import laptopsCartRoutes from './domains/laptops/cart/routes/cart.routes.js';
 import laptopsCategoryRoutes from './domains/laptops/category/routes/category.routes.js';
 import laptopsUploadRoutes from './domains/laptops/upload/routes/upload.routes.js';
 import laptopsContactRoutes from './domains/laptops/contact/routes/contact.routes.js';
+import laptopsUserRoutes from './domains/laptops/user/routes/user.routes.js';
+import laptopsPaymentRoutes from './domains/laptops/payment/routes/payment.routes.js';
+import laptopsComplaintRoutes from './domains/laptops/support/routes/complaint.routes.js';
 
-// Import flowers domain routes (including auth)
-// Import flowers domain routes (including auth)
-import flowersUploadRoutes from './domains/flowers/upload/routes/upload.routes.js';
-import flowersUserRoutes from './domains/flowers/user/routes/user.routes.js';
-// import flowersUserRoutes from './domains/flowers/user/routes/user.routes.js';
-import flowersPaymentRoutes from './domains/flowers/payment/routes/payment.routes.js';
-import flowersOccasionRoutes from './domains/flowers/occasion/routes/occasion.routes.js';
-import flowersReviewRoutes from './domains/flowers/reviews/routes/review.routes.js';
-import flowersNotificationRoutes from './domains/flowers/notification/routes/notification.routes.js';
-import flowersBannerRoutes from './domains/flowers/banner/routes/banner.routes.js';
-import flowersTestimonialRoutes from './domains/flowers/testimonial/routes/testimonial.routes.js';
+
+// ... (existing imports)
+
+// Laptops domain routes
+
 
 const app = express();
 
@@ -47,8 +52,8 @@ app.use(helmet());
 // Allow multiple origins for development (Vite runs on 5173, React on 3000)
 
 const corsOrigin = env.cors.origin || '*';
-const corsOriginsList = corsOrigin === '*' 
-  ? ['*'] 
+const corsOriginsList = corsOrigin === '*'
+  ? ['*']
   : corsOrigin.split(',').map(origin => origin.trim()).filter(Boolean);
 
 const allowedOrigins = [
@@ -124,6 +129,9 @@ app.use('/api/laptops/cart', laptopsCartRoutes);
 app.use('/api/laptops/categories', laptopsCategoryRoutes);
 app.use('/api/laptops/upload', laptopsUploadRoutes);
 app.use('/api/laptops/contact', laptopsContactRoutes);
+app.use('/api/laptops/user', laptopsUserRoutes);
+app.use('/api/laptops/payment', laptopsPaymentRoutes);
+app.use('/api/laptops/support/complaints', laptopsComplaintRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -132,6 +140,14 @@ app.use('*', (req, res) => {
     message: `Route ${req.originalUrl} not found`,
   });
 });
+
+// ⏰ Schedulers
+import { startAbandonedOrderScheduler } from './shared/common/schedulers/abandonedOrderScheduler.js';
+import { startAbandonedCartScheduler } from './shared/common/schedulers/abandonedCartScheduler.js';
+
+// Start background jobs
+startAbandonedOrderScheduler();
+// startAbandonedCartScheduler();
 
 // Global error handler (must be last)
 app.use(errorHandler);

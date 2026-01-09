@@ -158,9 +158,19 @@ export const createOrder = asyncHandler(async (req, res, next) => {
  * @access  Private
  */
 export const getOrders = asyncHandler(async (req, res, next) => {
-  const { status, orderType } = req.query;
+  console.log("inside get orders");
 
-  const query = { userId: req.user._id };
+  const { status, orderType } = req.query;
+  console.log("status", status);
+  console.log("orderType", orderType);
+
+  let query = {};
+
+  // If user is a buyer, restrict to their own orders
+  if (req.user.role === 'B2C_BUYER' || req.user.role === 'B2B_BUYER') {
+    query.userId = req.user._id;
+  }
+
   if (status) {
     query.status = status;
   }

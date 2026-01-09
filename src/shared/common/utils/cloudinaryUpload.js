@@ -64,13 +64,13 @@ export const uploadMultipleImages = async (
 ) => {
   try {
     const uploadPromises = files.map((file) => {
-      const buffer = file.buffer || file;
+      const buffer = Buffer.isBuffer(file) ? file : (file.buffer || file);
       return uploadImage(buffer, folder, options);
     });
     return await Promise.all(uploadPromises);
   } catch (error) {
     console.error('Error in uploadMultipleImages:', error);
-    throw new AppError('Failed to upload images', 500);
+    throw new AppError(`Failed to upload images: ${error.message}`, 500);
   }
 };
 
