@@ -2,6 +2,7 @@
  * Order Model (Laptops Domain)
  * Defines order schema supporting both B2B and B2C orders with delivery scheduling
  */
+//
 import mongoose from 'mongoose';
 import { getConnection, isConnected } from '../../../../shared/infrastructure/database/connections.js';
 

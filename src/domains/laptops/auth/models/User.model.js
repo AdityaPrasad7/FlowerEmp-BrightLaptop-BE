@@ -3,6 +3,7 @@
  * Defines user schema with role-based fields
  * Uses laptops database connection
  */
+//
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 import { getConnection, isConnected } from '../../../../shared/infrastructure/database/connections.js';

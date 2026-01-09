@@ -132,7 +132,7 @@ app.use('/api/laptops/contact', laptopsContactRoutes);
 app.use('/api/laptops/user', laptopsUserRoutes);
 app.use('/api/laptops/payment', laptopsPaymentRoutes);
 app.use('/api/laptops/support/complaints', laptopsComplaintRoutes);
-
+//
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({
