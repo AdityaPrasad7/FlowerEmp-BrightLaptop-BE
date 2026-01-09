@@ -35,6 +35,7 @@ import laptopsContactRoutes from './domains/laptops/contact/routes/contact.route
 import laptopsUserRoutes from './domains/laptops/user/routes/user.routes.js';
 import laptopsPaymentRoutes from './domains/laptops/payment/routes/payment.routes.js';
 import laptopsComplaintRoutes from './domains/laptops/support/routes/complaint.routes.js';
+import laptopsWarehouseRoutes from './domains/laptops/warehouse/routes/warehouse.routes.js';
 
 
 // ... (existing imports)
@@ -132,6 +133,7 @@ app.use('/api/laptops/contact', laptopsContactRoutes);
 app.use('/api/laptops/user', laptopsUserRoutes);
 app.use('/api/laptops/payment', laptopsPaymentRoutes);
 app.use('/api/laptops/support/complaints', laptopsComplaintRoutes);
+app.use('/api/laptops/warehouses', laptopsWarehouseRoutes);
 //
 // 404 handler
 app.use('*', (req, res) => {

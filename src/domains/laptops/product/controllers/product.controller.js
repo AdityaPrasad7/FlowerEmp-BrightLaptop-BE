@@ -46,6 +46,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     warrantyOptions,
     shipping,
     offers,
+    warehouseId
   } = req.body;
 
   // Validate required fields
@@ -68,7 +69,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     images,
     brand: brand || undefined,
     brandImage: brandImage || undefined,
-    condition: condition || 'new',
+    condition: 'refurbished', // Force default
     basePrice,
     mrp: mrp || undefined,
     discountPercentage: discountPercentage || 0,
@@ -93,6 +94,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
       noCostEMI: false,
       bankOffers: false,
     },
+    warehouseId: warehouseId || null,
     sellerId: req.user._id,
   };
 
@@ -206,6 +208,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     warrantyOptions,
     shipping,
     offers,
+    warehouseId
   } = req.body;
 
   const product = await Product.findById(req.params.id);
@@ -254,6 +257,8 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   if (warrantyOptions !== undefined) product.warrantyOptions = warrantyOptions;
   if (shipping !== undefined) product.shipping = shipping;
   if (offers !== undefined) product.offers = offers;
+  if (warehouseId !== undefined) product.warehouseId = warehouseId;
+
 
   await product.save();
 

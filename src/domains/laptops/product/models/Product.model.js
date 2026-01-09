@@ -145,8 +145,8 @@ const productSchema = new mongoose.Schema(
     // Condition: 'new' or 'refurbished'
     condition: {
       type: String,
-      enum: ['new', 'refurbished'],
-      default: 'new',
+      // enum: ['new', 'refurbished'],
+      default: 'refurbished',
     },
     // Pricing
     basePrice: {
@@ -297,6 +297,11 @@ const productSchema = new mongoose.Schema(
         type: Boolean,
         default: false,
       },
+    },
+    warehouseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Warehouse',
+      default: null, // Optional for now
     },
     sellerId: {
       type: mongoose.Schema.Types.ObjectId,
