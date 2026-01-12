@@ -26,8 +26,15 @@ export const createCategory = asyncHandler(async (req, res, next) => {
   }
 
   // Create category
+  // Generate slug
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+
   const category = await Category.create({
     name,
+    slug,
     type,
     description: description || '',
     createdBy: req.user._id,
@@ -198,19 +205,16 @@ export const deleteCategory = asyncHandler(async (req, res, next) => {
 
   // Import Product model
   const Product = (await import('../../product/models/Product.model.js')).default;
-  
+
   // Check database connection
   const { isConnected } = await import('../../../../shared/infrastructure/database/connections.js');
   if (!isConnected('laptops')) {
     return next(new AppError('Database connection not ready', 503));
   }
 
-  // Normalize category name (same way products store it)
-  const normalizedCategoryName = category.name.trim().toLowerCase();
-
   // Delete all products with this category
-  const deleteResult = await Product.deleteMany({ 
-    category: normalizedCategoryName 
+  const deleteResult = await Product.deleteMany({
+    category: category._id
   });
 
   // Delete the category itself
@@ -251,26 +255,28 @@ export const deleteCategoryByName = asyncHandler(async (req, res, next) => {
   // Import Product model
   const Product = (await import('../../product/models/Product.model.js')).default;
 
-  // Normalize category name (same way products store it - lowercase, handle hyphens)
+  // Normalize category name
   const normalizedCategoryName = categoryName.trim().toLowerCase().replace(/-/g, ' ');
 
-  // Check if category exists in Category model (optional - products might not have Category entry)
-  const category = await Category.findOne({ 
+  // Check if category exists in Category model
+  const category = await Category.findOne({
     $or: [
       { name: { $regex: new RegExp(`^${normalizedCategoryName}$`, 'i') } },
       { slug: normalizedCategoryName.replace(/\s+/g, '-') }
     ]
   });
 
+  if (!category) {
+    return next(new AppError('Category not found', 404));
+  }
+
   // Delete all products with this category
-  const deleteResult = await Product.deleteMany({ 
-    category: normalizedCategoryName 
+  const deleteResult = await Product.deleteMany({
+    category: category._id
   });
 
-  // Delete the category from Category model if it exists
-  if (category) {
-    await Category.findByIdAndDelete(category._id);
-  }
+  // Delete the category itself
+  await Category.findByIdAndDelete(category._id);
 
   res.status(200).json({
     success: true,

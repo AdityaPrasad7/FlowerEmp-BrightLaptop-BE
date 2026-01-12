@@ -362,76 +362,99 @@ export const clearCart = asyncHandler(async (req, res, next) => {
 
 /**
  * @route   GET /api/flowers/cart/abandoned
- * @desc    Get abandoned carts (Admin only)
+ * @desc    Get abandoned checkouts (Pending Payment Orders) (Admin only)
  * @access  Private (Admin only)
  */
 export const getAbandonedCarts = asyncHandler(async (req, res, next) => {
-  // Define "Abandoned" as not updated in the last 2 hours
-  const twoHoursAgo = new Date(Date.now() - 1 * 60 * 1000);
-  // const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+  // Use dynamic import for Order model to avoid potential circular dependency if any
+  const Order = (await import('../../order/models/Order.model.js')).default;
 
-  const abandonedCarts = await Cart.find({
-    updatedAt: { $lt: twoHoursAgo },
-    'items.0': { $exists: true } // Check if items array is not empty
+  // Find orders that are PENDING payment (Abandoned Checkouts)
+  // Logic: Status PENDING + Payment Status PENDING + Not COD
+  // We want ALL pending orders regardless of time, or maybe recently created.
+  // User said "Pending not the cart items", implying the active pending orders.
+
+  const abandonedOrders = await Order.find({
+    status: 'PENDING',
+    paymentStatus: 'PENDING',
+    paymentMethod: { $ne: 'COD' }
   })
     .populate('userId', 'name email phone')
-    .populate('items.productId', 'name basePrice images')
-    .sort({ updatedAt: -1 });
+    .populate('products.productId', 'name basePrice images')
+    .sort({ createdAt: -1 });
+
+  // Map Orders to match the structure expected by frontend (which expects "cart" and "items")
+  const mappedCarts = abandonedOrders.map(order => ({
+    _id: order._id, // Use Order ID as "Cart ID"
+    userId: order.userId,
+    updatedAt: order.createdAt, // Use created date
+    totalAmount: order.totalAmount,
+    items: order.products.map(p => ({
+      productId: p.productId,
+      quantity: p.quantity,
+      unitPrice: p.priceAtPurchase,
+      totalPrice: p.priceAtPurchase * p.quantity
+    }))
+  }));
 
   res.status(200).json({
     success: true,
-    count: abandonedCarts.length,
+    count: mappedCarts.length,
     data: {
-      carts: abandonedCarts,
+      carts: mappedCarts, // Returning as "carts" to keep frontend compatibility
     },
   });
 });
 
 /**
  * @route   POST /api/flowers/cart/recover/:cartId
- * @desc    Send recovery email to user
+ * @desc    Send payment reminder email to user (for Order)
  * @access  Private (Admin only)
  */
 export const sendRecoveryEmail = asyncHandler(async (req, res, next) => {
-  const { cartId } = req.params;
+  const { cartId } = req.params; // This is actually orderId now
 
-  const cart = await Cart.findById(cartId)
+  const Order = (await import('../../order/models/Order.model.js')).default;
+
+  const order = await Order.findById(cartId)
     .populate('userId', 'name email phone')
-    .populate('items.productId', 'name basePrice images');
+    .populate('products.productId', 'name basePrice images');
 
-  if (!cart) {
-    return next(new AppError('Cart not found', 404));
+  if (!order) {
+    return next(new AppError('Order not found', 404));
   }
 
-  if (!cart.userId || !cart.userId.email) {
+  if (!order.userId || !order.userId.email) {
     return next(new AppError('User email not found', 400));
   }
 
-  const user = cart.userId;
+  const user = order.userId;
   const { sendEmail } = await import('../../../../shared/common/utils/emailService.js');
+  // Helper to estimate frontend URL
+  const FRONTEND_URL = req.headers.origin || 'http://localhost:5173';
 
-  const productRows = cart.items.map(item => `
+  const productRows = order.products.map(item => `
     <tr>
       <td style="padding: 10px; border-bottom: 1px solid #eee;">
-        <img src="${item.productId.images?.[0] || 'https://placehold.co/40x40'}" alt="${item.productId.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+        <img src="${item.productId?.images?.[0] || 'https://placehold.co/40x40'}" alt="${item.productId?.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
       </td>
       <td style="padding: 10px; border-bottom: 1px solid #eee;">
-        <strong>${item.productId.name}</strong>
+        <strong>${item.productId?.name}</strong>
       </td>
       <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">
         ${item.quantity}
       </td>
       <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">
-        ${item.totalPrice.toFixed(3)} KD
+        ${(item.priceAtPurchase * item.quantity).toFixed(3)} KD
       </td>
     </tr>
   `).join('');
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-      <h2 style="color: #E11D48;">You left something behind! 🌸</h2>
+      <h2 style="color: #E11D48;">Unpaid Order #${order.orderId} 🌸</h2>
       <p>Hi ${user.name},</p>
-      <p>We noticed you left some beautiful items in your cart. They are saved and waiting for you!</p>
+      <p>We noticed your order <strong>#${order.orderId}</strong> is still pending payment.</p>
       
       <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
         <thead>
@@ -448,26 +471,22 @@ export const sendRecoveryEmail = asyncHandler(async (req, res, next) => {
         <tfoot>
           <tr>
             <td colspan="3" style="padding: 15px; text-align: right; font-weight: bold;">Total:</td>
-            <td style="padding: 15px; text-align: right; font-weight: bold; color: #E11D48;">${cart.totalAmount.toFixed(3)} KD</td>
+            <td style="padding: 15px; text-align: right; font-weight: bold; color: #E11D48;">${order.totalAmount.toFixed(3)} KD</td>
           </tr>
         </tfoot>
       </table>
-  
       
-      <p style="margin-top: 30px; font-size: 12px; color: #888;">If you have any questions, reply to this email.</p>
+      <div style="text-align: center; margin-top: 30px;">
+        <a href="${FRONTEND_URL}/account/orders" style="background-color: #E11D48; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Complete Payment</a>
+      </div>
+      
+      <p style="margin-top: 30px; font-size: 12px; color: #888;">If you have already paid, please ignore this email.</p>
     </div>
   `;
 
-
-  // href="http://localhost:5174/cart"
-
-  // <div style="text-align: center; margin-top: 30px;">
-  //   <a  href=# style="background-color: #E11D48; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Complete Your Purchase</a>
-  // </div>
-
   await sendEmail({
     to: user.email,
-    subject: 'Complete your purchase at Flower Emporium',
+    subject: `Complete your payment for Order #${order.orderId}`,
     html,
   });
 

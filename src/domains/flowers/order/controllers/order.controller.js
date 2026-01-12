@@ -176,13 +176,16 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // Notify admins
-  await notifyAdmins(
-    'New Order Placed',
-    `Order #${order._id.toString().slice(-6)} placed by ${req.user.name}`,
-    'SUCCESS',
-    `/orders/${order._id}`
-  );
+  // Notify admins ONLY for COD orders immediately.
+  // For online payments, notification is sent in verifyPayment upon success.
+  if (paymentMethod === 'COD') {
+    await notifyAdmins(
+      'New Order Placed',
+      `Order #${order.orderId ? order.orderId : order._id.toString().slice(-6)} placed by ${req.user.name} (COD)`,
+      'SUCCESS',
+      `/orders/${order._id}`
+    );
+  }
 
   res.status(201).json({
     success: true,
@@ -392,6 +395,11 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
 
         // Custom Messages for specific statuses
         switch (status) {
+          case 'APPROVED':
+            subject = `Order #${order.orderId} Accepted ✅`;
+            message = `Your order has been accepted and is being processed.`;
+            smsMessage = `Hi ${user.name}, your order #${order.orderId} has been accepted and is being processed.`;
+            break;
           case 'SHIPPED':
             subject = `Your Order #${order.orderId} has Shipped! 🚚`;
             message = `Great news! Your order has been shipped and is on its way.`;

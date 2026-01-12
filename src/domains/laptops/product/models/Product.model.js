@@ -220,12 +220,9 @@ const productSchema = new mongoose.Schema(
       // Tracks total quantity sold (incremented when orders are approved)
     },
     category: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
       required: [true, 'Category is required'],
-      trim: true,
-      lowercase: true,
-      minlength: [2, 'Category must be at least 2 characters'],
-      maxlength: [50, 'Category must not exceed 50 characters'],
     },
     // Ratings and Reviews
     rating: {

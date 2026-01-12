@@ -141,6 +141,10 @@ const orderSchema = new mongoose.Schema(
       enum: ['PENDING', 'PAID', 'FAILED', 'REFUNDED'],
       default: 'PENDING',
     },
+    adminNotified: {
+      type: Boolean,
+      default: false,
+    },
     deliveryCharge: {
       type: Number,
       default: 0,

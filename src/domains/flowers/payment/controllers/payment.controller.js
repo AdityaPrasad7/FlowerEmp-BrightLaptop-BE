@@ -196,8 +196,10 @@ export const verifyPayment = async (req, res, next) => {
                 }
 
                 // 🔔 NOTIFICATIONS: Payment Success
+                const user = order.userId; // Populated above
                 try {
-                    const user = order.userId; // Populated above
+                    console.log("user", user);
+
 
                     // 0. Persistent Notification (In-App)
                     await createNotification(
@@ -235,6 +237,15 @@ export const verifyPayment = async (req, res, next) => {
                 } catch (notifyError) {
                     console.error("Payment Notification Error:", notifyError.message);
                 }
+
+                // 🔔 ADMIN NOTIFICATION: New Order Placed (Verified)
+                const { notifyAdmins } = await import('../../../../shared/common/utils/notificationService.js');
+                await notifyAdmins(
+                    'New Order Placed',
+                    `Order #${order.orderId} placed by ${user.name} (Paid Online)`,
+                    'SUCCESS',
+                    `/orders/${order._id}`
+                );
             }
 
             return res.status(200).json({
@@ -244,7 +255,7 @@ export const verifyPayment = async (req, res, next) => {
             });
 
         } else {
-            // Handle Failure
+            // Handle Failure - ABANDONED CHECKOUT LOGIC
             order.paymentStatus = 'FAILED';
 
             // Link summary even on failure
@@ -254,6 +265,40 @@ export const verifyPayment = async (req, res, next) => {
             };
 
             await order.save();
+
+            // 🔔 NOTIFICATIONS: Payment Failed / Abandoned Checkout
+            try {
+                const user = order.userId;
+                const { notifyAdmins } = await import('../../../../shared/common/utils/notificationService.js');
+
+                // 1. Email to User (Immediate Action Required)
+                const emailHtml = `
+                    <h2>Payment Failed</h2>
+                    <p>Hi ${user.name},</p>
+                    <p>We noticed your payment for order <strong>#${order.orderId}</strong> was not completed.</p>
+                    <p><strong>Reason:</strong> ${transaction.status} (Gateway Response)</p>
+                    <p>Don't worry! Your items are saved. Please click below to try again or choose a different payment method.</p>
+                    <p><a href="${// Use FRONTEND_URL or configured env URL
+                    req.headers.origin || 'https://floweremporium.com'}/checkout">Complete Your Purchase</a></p>
+                `;
+
+                await sendEmail({
+                    to: user.email,
+                    subject: `Action Required: Payment Failed for Order #${order.orderId}`,
+                    html: emailHtml
+                });
+
+                // 2. Notify Admin (Abandoned Checkout Alert)
+                await notifyAdmins(
+                    'Abandoned Checkout Detected',
+                    `Payment failed for Order #${order.orderId} (${transaction.amount} KD) by ${user.name}. Status: ${transaction.status}.`,
+                    'WARNING',
+                    `/orders/${order._id}` // Link to order details (or abandoned list if exists)
+                );
+
+            } catch (notifyError) {
+                console.error("Payment Failure Notification Error:", notifyError.message);
+            }
 
             return res.status(400).json({
                 success: false,

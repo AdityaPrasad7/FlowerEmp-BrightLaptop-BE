@@ -34,12 +34,12 @@ const bulkPricingTierSchema = Joi.object({
 const bulkPricingSchema = Joi.array()
   .items(bulkPricingTierSchema)
   .custom((tiers, helpers) => {
-      // Validate ascending order
-      for (let i = 1; i < tiers.length; i++) {
-        if (tiers[i].minQty <= tiers[i - 1].minQty) {
+    // Validate ascending order
+    for (let i = 1; i < tiers.length; i++) {
+      if (tiers[i].minQty <= tiers[i - 1].minQty) {
         return helpers.error('array.custom');
-        }
       }
+    }
     return tiers;
   })
   .messages({
@@ -207,10 +207,11 @@ export const createProductSchema = Joi.object({
     noCostEMI: Joi.boolean().optional().default(false),
     bankOffers: Joi.boolean().optional().default(false),
   }).optional().default({
-    exchangeOffer: false,
-    exchangeDiscountPercentage: 0,
     noCostEMI: false,
     bankOffers: false,
+  }),
+  warehouseId: Joi.string().trim().pattern(/^[0-9a-fA-F]{24}$/).optional().allow(null).messages({
+    'string.pattern.base': 'Warehouse ID must be a valid MongoDB ObjectId',
   }),
 });
 
@@ -320,5 +321,8 @@ export const updateProductSchema = Joi.object({
     noCostEMI: Joi.boolean().optional(),
     bankOffers: Joi.boolean().optional(),
   }).optional(),
+  warehouseId: Joi.string().trim().pattern(/^[0-9a-fA-F]{24}$/).optional().allow(null).messages({
+    'string.pattern.base': 'Warehouse ID must be a valid MongoDB ObjectId',
+  }),
 });
 

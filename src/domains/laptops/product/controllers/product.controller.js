@@ -48,6 +48,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     offers,
     warehouseId
   } = req.body;
+  console.log("BODY", req.body);
 
   // Validate required fields
   if (!name || basePrice === undefined || stock === undefined || !category) {
@@ -60,7 +61,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
   }
 
   // Normalize category: trim, lowercase, and replace hyphens with spaces
-  const normalizedCategory = category.trim().toLowerCase().replace(/-/g, ' ');
+  // const normalizedCategory = category.trim().toLowerCase().replace(/-/g, ' ');
 
   // Prepare product data
   const productData = {
@@ -79,7 +80,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     moq: moq || 1,
     bulkPricing: bulkPricing || [],
     stock,
-    category: normalizedCategory,
+    category,
     rating: rating || 0,
     reviewsCount: reviewsCount || 0,
     liveViewers: liveViewers || 0,
@@ -97,6 +98,9 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     warehouseId: warehouseId || null,
     sellerId: req.user._id,
   };
+
+  console.log("DEBUG CONTROLLER: warehouseId from body:", warehouseId);
+  console.log("DEBUG CONTROLLER: productData.warehouseId:", productData.warehouseId);
 
   // Create product
   const product = await Product.create(productData);
@@ -246,7 +250,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   if (isActive !== undefined) product.isActive = isActive;
   // Normalize category if provided (replace hyphens with spaces)
   if (category !== undefined) {
-    product.category = category.trim().toLowerCase().replace(/-/g, ' ');
+    product.category = category;
   }
   if (rating !== undefined) product.rating = rating;
   if (reviewsCount !== undefined) product.reviewsCount = reviewsCount;

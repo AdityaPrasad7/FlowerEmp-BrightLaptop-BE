@@ -84,10 +84,56 @@ export const getAddresses = asyncHandler(async (req, res) => {
 });
 
 export const getCustomers = asyncHandler(async (req, res) => {
-    // Fetch users with roles B2C_BUYER or B2B_BUYER
-    const customers = await User.find({
-        role: { $in: ['B2C_BUYER', 'B2B_BUYER'] }
-    }).select('-password');
+    // Fetch users with roles B2C_BUYER or B2B_BUYER and calculate LTV
+    const customers = await User.aggregate([
+        {
+            $match: {
+                role: { $in: ['B2C_BUYER', 'B2B_BUYER'] }
+            }
+        },
+        {
+            $lookup: {
+                from: 'orders',
+                localField: '_id',
+                foreignField: 'userId',
+                as: 'orders'
+            }
+        },
+        {
+            $addFields: {
+                totalSpent: {
+                    $sum: {
+                        $map: {
+                            input: {
+                                $filter: {
+                                    input: "$orders",
+                                    as: "order",
+                                    cond: {
+                                        $and: [
+                                            { $ne: ["$$order.status", "CANCELLED"] },
+                                            { $ne: ["$$order.paymentStatus", "FAILED"] },
+                                            { $ne: ["$$order.paymentStatus", "PENDING"] }
+                                        ]
+                                    }
+                                }
+                            },
+                            as: "validOrder",
+                            in: "$$validOrder.totalAmount"
+                        }
+                    }
+                },
+                id: "$_id" // Ensure id is available for frontend
+            }
+        },
+        {
+            $project: {
+                password: 0,
+                orders: 0,
+                __v: 0
+            }
+        },
+        { $sort: { createdAt: -1 } } // Optional: sort by newest
+    ]);
 
     res.json({
         success: true,
