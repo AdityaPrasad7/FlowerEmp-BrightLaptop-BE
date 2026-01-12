@@ -3,6 +3,7 @@
  */
 import Complaint from '../models/Complaint.model.js';
 import Order from '../../order/models/Order.model.js';
+import Product from '../../product/models/Product.model.js';
 import { AppError, asyncHandler } from '../../../../shared/common/utils/errorHandler.js';
 
 /**
@@ -11,27 +12,39 @@ import { AppError, asyncHandler } from '../../../../shared/common/utils/errorHan
  * @access  Private
  */
 export const createComplaint = asyncHandler(async (req, res, next) => {
-    const { orderId, subject, description, category, priority } = req.body;
+    const { orderId, productId, description, category } = req.body;
+
+    if (!description || !category) {
+        return next(new AppError('Description and category are required', 400));
+    }
 
     // Validate Order if provided
     if (orderId) {
-        const order = await Order.findById(orderId);
+        const order = await Order.findById(orderId)
+            .populate('products.productId');
         if (!order) {
             return next(new AppError('Order not found', 404));
         }
-        // Verify user owns the order (unless admin?? No, user raises complaint)
-        if (order.userId.toString() !== req.user._id.toString()) {
-            return next(new AppError('You can only raise complaints for your own orders', 403));
+
+        // Allow any user to raise a complaint for this order (no ownership check)
+
+        // If productId is provided, verify it's in the order
+        if (productId) {
+            const productInOrder = order.products.some(
+                item => item.productId._id.toString() === productId.toString()
+            );
+            if (!productInOrder) {
+                return next(new AppError('Product not found in this order', 400));
+            }
         }
     }
 
     const complaint = await Complaint.create({
         userId: req.user._id,
         orderId: orderId || null,
-        subject,
+        productId: productId || null,
         description,
-        category: category || 'Other',
-        priority: priority || 'Medium',
+        category,
         status: 'OPEN'
     });
 
@@ -50,7 +63,7 @@ export const createComplaint = asyncHandler(async (req, res, next) => {
  * @access  Private
  */
 export const getComplaints = asyncHandler(async (req, res, next) => {
-    const { status, userId, orderId } = req.query;
+    const { status, userId, orderId, category } = req.query;
 
     let query = {};
 
@@ -64,13 +77,15 @@ export const getComplaints = asyncHandler(async (req, res, next) => {
 
     if (status) query.status = status;
     if (orderId) query.orderId = orderId;
+    if (category) query.category = category;
 
     const complaints = await Complaint.find(query)
-        .populate('userId', 'name email phone')
+        .populate('userId', 'name email phone companyName')
+        .populate('productId', 'name brand images specifications')
         .populate({
             path: 'orderId',
-            select: 'totalAmount status createdAt products',
-            populate: { path: 'products.productId', select: 'name' }
+            select: 'totalAmount status createdAt paymentStatus products',
+            populate: { path: 'products.productId', select: 'name brand images' }
         })
         .sort({ createdAt: -1 });
 
@@ -89,8 +104,13 @@ export const getComplaints = asyncHandler(async (req, res, next) => {
  * @access  Private (Admin/Seller)
  */
 export const updateComplaintStatus = asyncHandler(async (req, res, next) => {
-    const { status, adminNotes, priority } = req.body;
+    const { status } = req.body;
     const { id } = req.params;
+
+    const validStatuses = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
+    if (status && !validStatuses.includes(status)) {
+        return next(new AppError(`Invalid status. Must be one of: ${validStatuses.join(', ')}`, 400));
+    }
 
     const complaint = await Complaint.findById(id);
 
@@ -99,10 +119,18 @@ export const updateComplaintStatus = asyncHandler(async (req, res, next) => {
     }
 
     if (status) complaint.status = status;
-    if (adminNotes) complaint.adminNotes = adminNotes;
-    if (priority) complaint.priority = priority;
 
     await complaint.save();
+
+    // Populate before sending response
+    await complaint.populate('userId', 'name email phone companyName');
+    await complaint.populate('productId', 'name brand images');
+    if (complaint.orderId) {
+        await complaint.populate({
+            path: 'orderId',
+            select: 'totalAmount status createdAt paymentStatus',
+        });
+    }
 
     res.status(200).json({
         success: true,
@@ -120,8 +148,13 @@ export const updateComplaintStatus = asyncHandler(async (req, res, next) => {
  */
 export const getComplaint = asyncHandler(async (req, res, next) => {
     const complaint = await Complaint.findById(req.params.id)
-        .populate('userId', 'name email phone')
-        .populate('orderId');
+        .populate('userId', 'name email phone companyName')
+        .populate('productId', 'name brand images specifications')
+        .populate({
+            path: 'orderId',
+            select: 'totalAmount status createdAt paymentStatus products',
+            populate: { path: 'products.productId', select: 'name brand images' }
+        });
 
     if (!complaint) {
         return next(new AppError('Complaint not found', 404));

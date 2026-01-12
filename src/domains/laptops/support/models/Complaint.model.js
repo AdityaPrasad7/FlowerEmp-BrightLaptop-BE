@@ -16,11 +16,9 @@ const complaintSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Order', // Optional: complaint might not be linked to a specific order
         },
-        subject: {
-            type: String,
-            required: [true, 'Subject is required'],
-            trim: true,
-            maxlength: [100, 'Subject cannot exceed 100 characters'],
+        productId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Product', // Product from Laptops domain
         },
         description: {
             type: String,
@@ -28,28 +26,16 @@ const complaintSchema = new mongoose.Schema(
             trim: true,
             maxlength: [1000, 'Description cannot exceed 1000 characters'],
         },
-        category: {
+        category: {     
             type: String,
-            enum: ['Delivery', 'Product', 'Payment', 'Other'],
-            default: 'Other',
+            required: [true, 'Category is required'],
+            trim: true,
         },
         status: {
             type: String,
             enum: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'],
             default: 'OPEN',
         },
-        priority: {
-            type: String,
-            enum: ['Low', 'Medium', 'High', 'Critical'],
-            default: 'Medium',
-        },
-        // For admin internal notes
-        adminNotes: {
-            type: String,
-            trim: true,
-        },
-        // Array of objects for conversation history if needed strictly, 
-        // but for now simple structure as requested
     },
     {
         timestamps: true,
@@ -60,6 +46,7 @@ const complaintSchema = new mongoose.Schema(
 complaintSchema.index({ userId: 1 });
 complaintSchema.index({ status: 1 });
 complaintSchema.index({ orderId: 1 });
+complaintSchema.index({ productId: 1 });
 
 // Lazy-load the model
 let Complaint = null;
