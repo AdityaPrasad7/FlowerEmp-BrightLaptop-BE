@@ -38,11 +38,7 @@ import laptopsComplaintRoutes from './domains/laptops/support/routes/complaint.r
 import laptopsWarehouseRoutes from './domains/laptops/warehouse/routes/warehouse.routes.js';
 import laptopsShippingRoutes from './domains/laptops/shipping/routes/shipping.routes.js';
 import laptopsRefurbishmentRoutes from './domains/laptops/refurbishment/routes/refurbishmentRequest.routes.js';
-
-
-// ... (existing imports)
-
-// Laptops domain routes
+import laptopsDashboardRoutes from './domains/laptops/dashboard/dashboard.routes.js';
 
 
 const app = express();
@@ -138,7 +134,8 @@ app.use('/api/laptops/support/complaints', laptopsComplaintRoutes);
 app.use('/api/laptops/warehouses', laptopsWarehouseRoutes);
 app.use('/api/laptops/shipping', laptopsShippingRoutes);
 app.use('/api/laptops/refurbishment/requests', laptopsRefurbishmentRoutes);
-//
+app.use('/api/laptops/dashboard', laptopsDashboardRoutes);
+
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({

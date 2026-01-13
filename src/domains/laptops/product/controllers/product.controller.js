@@ -3,6 +3,7 @@
  * Handles product CRUD operations with MOQ, bulk pricing, and B2B pricing
  */
 import Product from '../models/Product.model.js';
+import Category from '../../category/models/Category.model.js'; // Import Category model
 import UserModel from '../../auth/models/User.model.js';
 import { AppError, asyncHandler } from '../../../../shared/common/utils/errorHandler.js';
 
@@ -367,10 +368,30 @@ export const getProductsByCategory = asyncHandler(async (req, res, next) => {
   // Normalize category name (trim, lowercase, and convert hyphens to spaces)
   // This handles both URL slugs (mini-pcs) and database format (mini pcs)
   const normalizedCategory = categoryName.trim().toLowerCase().replace(/-/g, ' ');
+  const slug = categoryName.trim().toLowerCase().replace(/\s+/g, '-');
 
-  // Build query
+  // Find category by slug or name
+  const categoryDoc = await Category.findOne({
+    $or: [
+      { slug: slug },
+      { name: { $regex: new RegExp(`^${normalizedCategory}$`, 'i') } }
+    ]
+  });
+
+  if (!categoryDoc) {
+    return res.status(200).json({
+      success: true,
+      count: 0,
+      data: {
+        category: normalizedCategory,
+        products: [],
+      },
+    });
+  }
+
+  // Build query using Category ID
   const query = {
-    category: normalizedCategory,
+    category: categoryDoc._id,
   };
 
   if (sellerId) {

@@ -1,6 +1,7 @@
 
 import { asyncHandler, AppError } from '../../../../shared/common/utils/errorHandler.js';
 import { shiprocketService } from '../services/shiprocket.service.js';
+import { sendShipmentConfirmationEmail } from '../../../../shared/common/utils/emailService.js';
 import Order from '../../order/models/Order.model.js';
 import User from '../../auth/models/User.model.js';
 import Product from '../../product/models/Product.model.js';
@@ -91,18 +92,63 @@ export const createShipment = asyncHandler(async (req, res, next) => {
     // 1. Create Order in Shiprocket
     const shiprocketResponse = await shiprocketService.createOrder(shipmentPayload);
 
-    // 2. Update our Order status
+    // Extract basic IDs
+    let data = shiprocketResponse.payload || shiprocketResponse;
+    const shipmentId = data.shipment_id;
+    const shiprocketOrderId = data.order_id;
+
+    // 2. Generate AWB if not present (Shiprocket flow: Create Order -> Assign AWB)
+    // If we provided courierId, we should try to assign AWB immediately
+    let trackingInfo = {
+        trackingId: data.awb_code || null,
+        courierName: data.courier_name || null,
+        labelUrl: data.label_url || null,
+        shiprocketOrderId: shiprocketOrderId,
+        shiprocketShipmentId: shipmentId
+    };
+
+    let awbErrorMsg = null;
+
+    if (!trackingInfo.trackingId && shipmentId && courierId) {
+        try {
+            const awbResponse = await shiprocketService.generateAWB(shipmentId, courierId);
+
+            // Extract from AWB response
+            // Structure: { awb_assign_status: 1, response: { data: { awb_code: "..." } } }
+            if (awbResponse.response && awbResponse.response.data) {
+                const awbData = awbResponse.response.data;
+                trackingInfo.trackingId = awbData.awb_code;
+                trackingInfo.courierName = awbData.courier_name || trackingInfo.courierName;
+            } else if (awbResponse.awb_assign_status === 1 && awbResponse.awb_code) {
+                // Fallback check for flat structure if structure matches create order response
+                trackingInfo.trackingId = awbResponse.awb_code;
+            }
+        } catch (awbError) {
+            console.error('Failed to auto-generate AWB:', awbError.message);
+            // Capture specific Shiprocket error message if available
+            awbErrorMsg = awbError.message || 'Unknown AWB Generation Error';
+        }
+    }
+
+    // 3. Update our Order status and save tracking info
     order.status = 'SHIPPED';
-    // You might want to save the Shiprocket Order ID and Shipment ID to the order model
-    // Ideally, add new fields to Order model: trackingId, logisticsProvider, etc.
-    // For now, let's just update the status.
+    order.trackingData = trackingInfo;
 
     await order.save();
+
+    // 4. Send Shipment Confirmation Email
+    try {
+        await sendShipmentConfirmationEmail(order);
+    } catch (emailError) {
+        console.error('Failed to send shipment confirmation email:', emailError);
+        // Don't fail the request if email fails, just log it
+    }
 
     res.status(200).json({
         success: true,
         message: 'Shipment created successfully',
-        data: shiprocketResponse
+        warning: awbErrorMsg, // Return the warning to the frontend
+        data: { ...data, ...trackingInfo }
     });
 });
 

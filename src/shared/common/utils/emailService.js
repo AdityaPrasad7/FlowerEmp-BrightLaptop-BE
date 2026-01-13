@@ -553,3 +553,373 @@ export const sendThankYouEmail = async (userData) => {
   });
 };
 
+
+/**
+ * Send order confirmation email with invoice details
+ * @param {Object} order - Order object with populated products and user
+ * @returns {Promise} Promise that resolves when email is sent
+ */
+export const sendOrderConfirmationEmail = async (order) => {
+  const { userId, products, totalAmount, paymentStatus, paymentMethod, invoiceNumber, createdAt, shippingAddress } = order;
+  const userEmail = order.contactEmail || userId.email;
+  const userName = order.shippingAddress?.fullName || userId.name;
+
+  // Format date
+  const orderDate = new Date(createdAt).toLocaleDateString('en-IN', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  // Calculate Subtotal and GST (assuming 18% GST is included in total)
+  const gstPercentage = 18;
+  const subtotal = (totalAmount * 100) / (100 + gstPercentage);
+  const gstAmount = totalAmount - subtotal;
+
+  // Generate Items HTML
+  const itemsHtml = products.map(item => {
+    const product = item.productId;
+    const variantInfo = [];
+    if (item.selectedConfig?.ram) variantInfo.push(item.selectedConfig.ram);
+    if (item.selectedConfig?.storage) variantInfo.push(item.selectedConfig.storage);
+    const variantString = variantInfo.length > 0 ? `(${variantInfo.join('/')})` : '';
+
+    return `
+      <tr>
+        <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef;">
+          <p style="margin: 0; color: #212529; font-size: 14px; font-weight: 600;">
+            ${product.name}
+          </p>
+          <p style="margin: 4px 0 0 0; color: #6c757d; font-size: 12px;">
+            ${variantString}
+          </p>
+        </td>
+        <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; text-align: center;">
+          <p style="margin: 0; color: #495057; font-size: 14px;">
+            ${item.quantity}
+          </p>
+        </td>
+        <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; text-align: right;">
+          <p style="margin: 0; color: #212529; font-size: 14px; font-weight: 600;">
+            ₹${item.priceAtPurchase.toLocaleString('en-IN')}
+          </p>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <title>Order Confirmation - Bright Laptop</title>
+      <!--[if mso]>
+      <style type="text/css">
+        table {border-collapse:collapse;border-spacing:0;margin:0;}
+        div, td {padding:0;}
+        div {margin:0 !important;}
+      </style>
+      <![endif]-->
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f4f6f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+        <tr>
+          <td align="center" style="padding: 40px 0;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);">
+              
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%); padding: 40px 30px; text-align: center;">
+                  <div style="display: inline-block; border: 2px solid #ffffff; padding: 10px 20px; border-radius: 4px; margin-bottom: 20px;">
+                    <span style="color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: 2px; font-family: 'Arial Black', Arial, sans-serif;">
+                      BRIGHT LAPTOP
+                    </span>
+                  </div>
+                  <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">
+                    Order Confirmed!
+                  </h1>
+                  <p style="margin: 10px 0 0 0; color: #e0e0e0; font-size: 14px;">
+                    Order #${order.invoiceNumber || order._id.toString().slice(-6).toUpperCase()}
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Greeting -->
+              <tr>
+                <td style="padding: 40px 30px 20px 30px;">
+                  <p style="margin: 0; color: #212529; font-size: 16px; line-height: 1.6;">
+                    Hello <strong>${userName}</strong>,<br><br>
+                    Thank you for your purchase! We've received your order and are getting it ready for shipment. We will notify you once your package is on its way.
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Order Details Box -->
+              <tr>
+                <td style="padding: 0 30px;">
+                  <div style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td width="50%" style="vertical-align: top; padding-bottom: 20px;">
+                          <p style="margin: 0 0 5px 0; color: #6c757d; font-size: 12px; text-transform: uppercase; font-weight: 600;">
+                            Order Date
+                          </p>
+                          <p style="margin: 0; color: #212529; font-size: 14px; font-weight: 500;">
+                            ${orderDate}
+                          </p>
+                        </td>
+                        <td width="50%" style="vertical-align: top; padding-bottom: 20px;">
+                          <p style="margin: 0 0 5px 0; color: #6c757d; font-size: 12px; text-transform: uppercase; font-weight: 600;">
+                            Payment Method
+                          </p>
+                          <p style="margin: 0; color: #212529; font-size: 14px; font-weight: 500;">
+                            ${paymentMethod}
+                          </p>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" style="vertical-align: top;">
+                          <p style="margin: 0 0 5px 0; color: #6c757d; font-size: 12px; text-transform: uppercase; font-weight: 600;">
+                            Shipping Address
+                          </p>
+                          <p style="margin: 0; color: #212529; font-size: 14px; line-height: 1.5;">
+                            ${shippingAddress.addressLine1},<br>
+                            ${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Order Items -->
+              <tr>
+                <td style="padding: 30px;">
+                  <h2 style="margin: 0 0 20px 0; color: #212529; font-size: 18px; font-weight: 700;">
+                    Order Summary
+                  </h2>
+                  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                    <thead>
+                      <tr>
+                        <th align="left" style="padding-bottom: 10px; border-bottom: 2px solid #e9ecef; color: #6c757d; font-size: 12px; text-transform: uppercase;">Item</th>
+                        <th align="center" style="padding-bottom: 10px; border-bottom: 2px solid #e9ecef; color: #6c757d; font-size: 12px; text-transform: uppercase;">Qty</th>
+                        <th align="right" style="padding-bottom: 10px; border-bottom: 2px solid #e9ecef; color: #6c757d; font-size: 12px; text-transform: uppercase;">Price</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${itemsHtml}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colspan="2" style="padding-top: 15px; text-align: right; color: #6c757d; font-size: 14px;">Subtotal</td>
+                        <td style="padding-top: 15px; text-align: right; color: #212529; font-size: 14px; font-weight: 500;">₹${subtotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" style="padding-top: 8px; text-align: right; color: #6c757d; font-size: 14px;">GST (18%)</td>
+                        <td style="padding-top: 8px; text-align: right; color: #212529; font-size: 14px; font-weight: 500;">₹${gstAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" style="padding-top: 15px; text-align: right; color: #000000; font-size: 16px; font-weight: 700;">Total</td>
+                        <td style="padding-top: 15px; text-align: right; color: #000000; font-size: 18px; font-weight: 700;">₹${totalAmount.toLocaleString('en-IN')}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #f8f9fa; padding: 30px; text-align: center;">
+                  <p style="margin: 0; color: #6c757d; font-size: 13px; line-height: 1.6;">
+                    Need help? Contact us at <a href="mailto:contact@brightlaptop.com" style="color: #000000; text-decoration: none; font-weight: 600;">contact@brightlaptop.com</a>
+                  </p>
+                  <p style="margin: 20px 0 0 0; color: #adb5bd; font-size: 12px;">
+                    © ${new Date().getFullYear()} Bright Laptop. All rights reserved.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  return sendEmail({
+    to: userEmail,
+    subject: `Order Confirmation - #${invoiceNumber || order._id.toString().slice(-6).toUpperCase()}`,
+    html,
+  });
+};
+
+/**
+ * Send shipment confirmation email with tracking details
+ * @param {Object} order - Order object with populated products, user, and trackingData
+ * @returns {Promise} Promise that resolves when email is sent
+ */
+export const sendShipmentConfirmationEmail = async (order) => {
+  const { userId, products, trackingData, shippingAddress } = order;
+  console.log("order", order);
+
+  const userEmail = order.contactEmail || userId.email;
+  const userName = order.shippingAddress?.fullName || userId.name;
+
+  // Format date
+  const shippedDate = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  const trackingId = trackingData?.trackingId || 'N/A';
+  const courierName = trackingData?.courierName || 'Partner Courier';
+  // Use labelUrl if available, otherwise generic tracking link (can be enhanced with specific courier links)
+  const trackingLink = trackingData?.labelUrl || '#';
+
+  // Generate Items HTML (simplified list for shipment notification)
+  const itemsHtml = products.map(item => {
+    // Check if item.productId is populated, otherwise handle gracefully
+    const productName = item.productId ? item.productId.name : 'Product';
+    return `
+      <tr>
+        <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef;">
+          <p style="margin: 0; color: #212529; font-size: 14px; font-weight: 600;">
+            ${productName}
+          </p>
+          <p style="margin: 4px 0 0 0; color: #6c757d; font-size: 12px;">
+            Qty: ${item.quantity}
+          </p>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <title>Your Order Has Shipped! - Bright Laptop</title>
+      <!--[if mso]>
+      <style type="text/css">
+        table {border-collapse:collapse;border-spacing:0;margin:0;}
+        div, td {padding:0;}
+        div {margin:0 !important;}
+      </style>
+      <![endif]-->
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f4f6f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+        <tr>
+          <td align="center" style="padding: 40px 0;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);">
+              
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%); padding: 40px 30px; text-align: center;">
+                  <div style="display: inline-block; border: 2px solid #ffffff; padding: 10px 20px; border-radius: 4px; margin-bottom: 20px;">
+                    <span style="color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: 2px; font-family: 'Arial Black', Arial, sans-serif;">
+                      BRIGHT LAPTOP
+                    </span>
+                  </div>
+                  <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">
+                    Your Order is on the Way!
+                  </h1>
+                  <p style="margin: 10px 0 0 0; color: #e0e0e0; font-size: 14px;">
+                    Order #${order.invoiceNumber || order._id.toString().slice(-6).toUpperCase()}
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Greeting -->
+              <tr>
+                <td style="padding: 40px 30px 20px 30px;">
+                  <p style="margin: 0; color: #212529; font-size: 16px; line-height: 1.6;">
+                    Hello <strong>${userName}</strong>,<br><br>
+                    Great news! Your order has been shipped and is making its way to you. You can track your package using the details below.
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Tracking Details Box -->
+              <tr>
+                <td style="padding: 0 30px;">
+                  <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 25px; text-align: center;">
+                    <p style="margin: 0 0 5px 0; color: #166534; font-size: 13px; text-transform: uppercase; font-weight: 700;">
+                      Shipped via ${courierName}
+                    </p>
+                    <p style="margin: 0 0 20px 0; color: #15803d; font-size: 20px; font-weight: 700; letter-spacing: 1px;">
+                      ${trackingId}
+                    </p>
+                   
+                     <!-- Optional: Add Tracking Button if valid URL exists -->
+                     ${trackingData?.labelUrl ? `
+                     <a href="${trackingData.labelUrl}" target="_blank" style="display: inline-block; background-color: #16a34a; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+                        Track Package / Download Label
+                     </a>
+                     ` : ''}
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Order Items Summary (Short) -->
+              <tr>
+                <td style="padding: 30px;">
+                  <h3 style="margin: 0 0 15px 0; color: #212529; font-size: 16px; font-weight: 700;">
+                    Items in this Shipment
+                  </h3>
+                  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                    <tbody>
+                      ${itemsHtml}
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- Shipping Address -->
+              <tr>
+                <td style="padding: 0 30px 30px 30px;">
+                   <h3 style="margin: 0 0 10px 0; color: #212529; font-size: 16px; font-weight: 700;">
+                    Shipping To
+                  </h3>
+                  <p style="margin: 0; color: #495057; font-size: 14px; line-height: 1.5;">
+                    ${shippingAddress.addressLine1},<br>
+                    ${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #f8f9fa; padding: 30px; text-align: center;">
+                  <p style="margin: 0; color: #6c757d; font-size: 13px; line-height: 1.6;">
+                    Need help? Contact us at <a href="mailto:contact@brightlaptop.com" style="color: #000000; text-decoration: none; font-weight: 600;">contact@brightlaptop.com</a>
+                  </p>
+                  <p style="margin: 20px 0 0 0; color: #adb5bd; font-size: 12px;">
+                    © ${new Date().getFullYear()} Bright Laptop. All rights reserved.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  return sendEmail({
+    to: userEmail,
+    subject: `Your Order #${order.invoiceNumber || order._id.toString().slice(-6).toUpperCase()} Has Shipped!`,
+    html,
+  });
+};

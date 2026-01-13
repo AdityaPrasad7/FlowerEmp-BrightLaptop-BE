@@ -104,3 +104,5 @@ export const restrictTo = (...roles) => {
     next();
   };
 };
+
+export const admin = restrictTo('ADMIN');

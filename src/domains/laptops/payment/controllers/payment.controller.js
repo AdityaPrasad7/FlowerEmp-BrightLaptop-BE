@@ -11,6 +11,8 @@ import Product from '../../product/models/Product.model.js';
 import { AppError, asyncHandler } from '../../../../shared/common/utils/errorHandler.js';
 import { calculateOrderTotal } from '../../product/services/pricing.service.js';
 import env from '../../../../shared/infrastructure/config/env.js';
+import { sendOrderConfirmationEmail } from '../../../../shared/common/utils/emailService.js';
+import { generateAndSaveInvoiceNumber } from '../../../../shared/common/utils/invoice.service.js';
 
 let razorpay = null;
 
@@ -226,7 +228,24 @@ export const verifyPaymentAndPlaceOrder = asyncHandler(async (req, res, next) =>
     cart.totalAmount = 0;
     await cart.save();
 
+
     await order.populate('products.productId', 'name description');
+
+    // Generate Invoice Number
+    try {
+        await generateAndSaveInvoiceNumber(order);
+    } catch (error) {
+        console.error('Failed to generate invoice number:', error);
+        // Don't block the response, just log it
+    }
+
+    // Send Order Confirmation Email
+    try {
+        await sendOrderConfirmationEmail(order);
+    } catch (error) {
+        console.error('Failed to send order confirmation email:', error);
+        // Don't block the response, just log it
+    }
 
     res.status(201).json({
         success: true,

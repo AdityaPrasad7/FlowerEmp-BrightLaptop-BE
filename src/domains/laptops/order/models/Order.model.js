@@ -184,6 +184,14 @@ const orderSchema = new mongoose.Schema(
       type: Date,
       required: false,
     },
+    // Tracking Information
+    trackingData: {
+      trackingId: { type: String, trim: true }, // AWB Number
+      courierName: { type: String, trim: true },
+      shiprocketOrderId: { type: String, trim: true },
+      shiprocketShipmentId: { type: String, trim: true },
+      labelUrl: { type: String, trim: true }
+    },
   },
   {
     timestamps: true,

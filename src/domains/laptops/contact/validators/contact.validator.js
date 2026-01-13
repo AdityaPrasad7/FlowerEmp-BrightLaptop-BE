@@ -17,7 +17,7 @@ export const contactFormSchema = Joi.object({
       'string.min': 'Name must be at least 2 characters long',
       'string.max': 'Name must not exceed 100 characters',
     }),
-  
+
   email: Joi.string()
     .email()
     .trim()
@@ -27,7 +27,7 @@ export const contactFormSchema = Joi.object({
       'string.empty': 'Email is required',
       'string.email': 'Please provide a valid email address',
     }),
-  
+
   phone: Joi.string()
     .trim()
     .pattern(/^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/)
@@ -36,7 +36,7 @@ export const contactFormSchema = Joi.object({
     .messages({
       'string.pattern.base': 'Please provide a valid phone number',
     }),
-  
+
   message: Joi.string()
     .trim()
     .min(10)

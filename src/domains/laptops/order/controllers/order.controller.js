@@ -371,7 +371,7 @@ export const updatePaymentStatus = asyncHandler(async (req, res, next) => {
     data: {
       order,
     },
-    message: paymentStatus === 'PAID' && !oldPaymentStatus 
+    message: paymentStatus === 'PAID' && !oldPaymentStatus
       ? 'Payment status updated and invoice generated successfully'
       : 'Payment status updated successfully',
   });
