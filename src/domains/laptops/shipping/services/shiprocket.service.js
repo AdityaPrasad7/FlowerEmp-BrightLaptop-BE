@@ -18,11 +18,22 @@ class ShiprocketService {
             return this.token;
         }
 
+        // Validate credentials are present
+        if (!config.shiprocket.email || !config.shiprocket.password) {
+            console.error('Shiprocket credentials missing. Please set SHIPROCKET_EMAIL and SHIPROCKET_PASSWORD environment variables.');
+            throw new AppError('Shiprocket credentials not configured. Please set SHIPROCKET_EMAIL and SHIPROCKET_PASSWORD environment variables.', 500);
+        }
+
         try {
             const response = await axios.post(`${this.baseUrl}/auth/login`, {
                 email: config.shiprocket.email,
                 password: config.shiprocket.password
             });
+
+            if (!response.data || !response.data.token) {
+                console.error('Shiprocket Login Error: No token in response', response.data);
+                throw new AppError('Invalid response from Shiprocket authentication', 503);
+            }
 
             this.token = response.data.token;
             // Set token expiry to slightly less than actual expiry (usually 10 days, setting to 9 days)
@@ -32,8 +43,23 @@ class ShiprocketService {
 
             return this.token;
         } catch (error) {
-            console.error('Shiprocket Login Error:', error.response?.data || error.message);
-            throw new AppError('Failed to authenticate with Shiprocket', 503);
+            console.error('Shiprocket Login Error:', {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                message: error.message
+            });
+            
+            // Provide more specific error messages
+            if (error.response?.status === 401) {
+                throw new AppError('Invalid Shiprocket credentials. Please check SHIPROCKET_EMAIL and SHIPROCKET_PASSWORD.', 401);
+            } else if (error.response?.status === 400) {
+                throw new AppError(`Shiprocket authentication failed: ${error.response?.data?.message || 'Invalid request'}`, 400);
+            } else if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+                throw new AppError('Unable to connect to Shiprocket. Please check your internet connection.', 503);
+            }
+            
+            throw new AppError(`Failed to authenticate with Shiprocket: ${error.response?.data?.message || error.message}`, 503);
         }
     }
 

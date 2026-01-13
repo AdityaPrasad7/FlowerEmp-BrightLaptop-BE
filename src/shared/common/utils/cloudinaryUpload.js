@@ -5,6 +5,7 @@
 import cloudinary from '../../infrastructure/config/cloudinary.js';
 import { AppError } from '../utils/errorHandler.js';
 
+
 /**
  * Upload single image to Cloudinary
  * @param {Buffer} fileBuffer - File buffer from multer
@@ -99,6 +100,50 @@ export const deleteMultipleImages = async (publicIds) => {
     return result;
   } catch (error) {
     throw new AppError('Failed to delete images', 500);
+  }
+};
+
+/**
+ * Upload audio file to Cloudinary
+ * @param {Buffer} fileBuffer - File buffer from multer
+ * @param {string} folder - Folder path in Cloudinary (optional)
+ * @param {Object} options - Additional Cloudinary options
+ * @returns {Promise<Object>} Upload result with secure_url
+ */
+export const uploadAudio = async (fileBuffer, folder = 'laptops/complaints/voice', options = {}) => {
+  try {
+    return new Promise((resolve, reject) => {
+      const uploadOptions = {
+        resource_type: 'video', // Cloudinary uses 'video' resource type for audio files
+        timeout: 120000, // 120 seconds
+        ...options,
+      };
+
+      console.log(`Starting Cloudinary audio upload. Size: ${fileBuffer.length} bytes`);
+      const start = Date.now();
+
+      cloudinary.uploader
+        .upload_stream(uploadOptions, (error, result) => {
+          const duration = Date.now() - start;
+          console.log(`Cloudinary audio upload finished. Duration: ${duration}ms`);
+
+          if (error) {
+            console.error('Cloudinary audio upload stream error:', error);
+            return reject(new AppError('Audio upload failed', 500));
+          }
+          resolve({
+            public_id: result.public_id,
+            secure_url: result.secure_url,
+            url: result.url,
+            format: result.format,
+            duration: result.duration,
+          });
+        })
+        .end(fileBuffer);
+    });
+  } catch (error) {
+    console.error('Error in uploadAudio:', error);
+    throw new AppError('Failed to upload audio', 500);
   }
 };
 

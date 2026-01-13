@@ -2,7 +2,7 @@
  * Upload Controller
  * Handles image upload endpoints
  */
-import { uploadImage, uploadMultipleImages } from '../utils/cloudinaryUpload.js';
+import { uploadImage, uploadMultipleImages, uploadAudio } from '../utils/cloudinaryUpload.js';
 import { asyncHandler } from '../utils/errorHandler.js';
 
 /**
@@ -55,3 +55,26 @@ export const uploadMultipleImage = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * @route   POST /api/upload/audio
+ * @desc    Upload single audio file (for voice messages)
+ * @access  Private
+ */
+export const uploadSingleAudio = asyncHandler(async (req, res, next) => {
+  if (!req.file) {
+    return res.status(400).json({
+      success: false,
+      error: 'No audio file provided',
+    });
+  }
+
+  const folder = req.body.folder || 'laptops/complaints/voice';
+  const result = await uploadAudio(req.file.buffer, folder);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      audio: result,
+    },
+  });
+});

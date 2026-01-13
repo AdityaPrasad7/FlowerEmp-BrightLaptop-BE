@@ -18,6 +18,16 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+// File filter to accept only audio files
+const audioFileFilter = (req, file, cb) => {
+  // Check if file is an audio file (including webm which MediaRecorder uses)
+  if (file.mimetype.startsWith('audio/') || file.mimetype === 'audio/webm' || file.mimetype === 'video/webm') {
+    cb(null, true);
+  } else {
+    cb(new AppError(`Only audio files are allowed. Received: ${file.mimetype}`, 400), false);
+  }
+};
+
 // Configure multer
 const upload = multer({
   storage: storage,
@@ -37,6 +47,20 @@ export const uploadSingle = upload.single('image');
  * @param {number} maxCount - Maximum number of images (default: 10)
  */
 export const uploadMultiple = (maxCount = 10) => upload.array('images', maxCount);
+
+// Configure multer for audio files
+const audioUpload = multer({
+  storage: storage,
+  fileFilter: audioFileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit for audio files
+  },
+});
+
+/**
+ * Middleware for single audio file upload
+ */
+export const uploadSingleAudio = audioUpload.single('audio');
 
 /**
  * Error handler for multer errors

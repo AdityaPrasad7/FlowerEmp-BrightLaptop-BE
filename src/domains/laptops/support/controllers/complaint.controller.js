@@ -12,10 +12,15 @@ import { AppError, asyncHandler } from '../../../../shared/common/utils/errorHan
  * @access  Private
  */
 export const createComplaint = asyncHandler(async (req, res, next) => {
-    const { orderId, productId, description, category } = req.body;
+    const { orderId, productId, description, category, voiceMessage } = req.body;
 
-    if (!description || !category) {
-        return next(new AppError('Description and category are required', 400));
+    // Either description or voiceMessage must be provided
+    if ((!description || !description.trim()) && !voiceMessage) {
+        return next(new AppError('Either description or voice message is required', 400));
+    }
+
+    if (!category) {
+        return next(new AppError('Category is required', 400));
     }
 
     // Validate Order if provided
@@ -43,8 +48,9 @@ export const createComplaint = asyncHandler(async (req, res, next) => {
         userId: req.user._id,
         orderId: orderId || null,
         productId: productId || null,
-        description,
+        description: description?.trim() || '',
         category,
+        voiceMessage: voiceMessage || null,
         status: 'OPEN'
     });
 

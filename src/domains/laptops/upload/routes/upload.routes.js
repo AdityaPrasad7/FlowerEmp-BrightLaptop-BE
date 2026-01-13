@@ -5,10 +5,42 @@
 import express from 'express';
 import { protect } from '../../../../shared/common/middlewares/auth.middleware.js';
 import { restrictTo } from '../../../../shared/common/middlewares/role.middleware.js';
-import { uploadSingle, uploadMultiple, handleUploadError } from '../../../../shared/common/middlewares/upload.middleware.js';
-import { uploadSingleImage, uploadMultipleImage } from '../../../../shared/common/controllers/upload.controller.js';
+import { uploadSingle, uploadMultiple, uploadSingleAudio, handleUploadError } from '../../../../shared/common/middlewares/upload.middleware.js';
+import { uploadSingleImage, uploadMultipleImage, uploadSingleAudio as uploadAudioController } from '../../../../shared/common/controllers/upload.controller.js';
 
 const router = express.Router();
+
+// Upload voice message for complaints (All authenticated users)
+// This route must come before other routes to avoid conflicts
+router.post(
+  '/voice-message',
+  protect,
+  uploadSingleAudio,
+  handleUploadError,
+  (req, res, next) => {
+    // Set folder for voice messages
+    if (!req.body.folder) {
+      req.body.folder = 'laptops/complaints/voice';
+    }
+    uploadAudioController(req, res, next);
+  }
+);
+
+// Upload image for refurbishment requests (All authenticated users)
+// This route must come before /image to avoid route conflicts
+router.post(
+  '/refurbishment-image',
+  protect,
+  uploadSingle,
+  handleUploadError,
+  (req, res, next) => {
+    // Set folder for refurbishment images
+    if (!req.body.folder) {
+      req.body.folder = 'laptops/refurbishment';
+    }
+    uploadSingleImage(req, res, next);
+  }
+);
 
 // Upload single image (Seller/Admin only)
 router.post(

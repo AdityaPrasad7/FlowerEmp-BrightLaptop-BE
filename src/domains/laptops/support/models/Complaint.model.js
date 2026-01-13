@@ -26,9 +26,13 @@ const complaintSchema = new mongoose.Schema(
             trim: true,
             maxlength: [1000, 'Description cannot exceed 1000 characters'],
         },
-        category: {     
+        category: {
             type: String,
             required: [true, 'Category is required'],
+            trim: true,
+        },
+        voiceMessage: {
+            type: String, // URL to the uploaded voice message audio file
             trim: true,
         },
         status: {
